@@ -84,8 +84,20 @@ server.post(["/login", "/api/login"], (req, res) => {
     res.status(status).json({ status, message });
     return;
   }
+  const user = router.db
+    .get("users")
+    .find({ email })
+    .value();
+
   const accessToken = createToken({ email });
-  res.status(200).json({ accessToken });
+  res.status(200).json({
+    accessToken,
+    user: {
+      id: user ? user.id : 1,
+      name: user ? user.name : "User",
+      email
+    }
+  });
 });
 
 server.post(["/register", "/api/register"], (req, res) => {
@@ -120,9 +132,17 @@ server.post(["/register", "/api/register"], (req, res) => {
 
   users.push(newUser).write();
   
-  // Auto-login by returning JWT token on successful registration
+  // Auto-login by returning JWT token and user info on successful registration
   const accessToken = createToken({ email });
-  res.status(201).json({ accessToken, message: "User registered successfully" });
+  res.status(201).json({
+    accessToken,
+    user: {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email
+    },
+    message: "User registered successfully"
+  });
 });
 
 // Middleware to pre-process POST requests (injects user_id and created_at)
