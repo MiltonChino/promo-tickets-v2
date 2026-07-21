@@ -145,6 +145,78 @@ server.post(["/register", "/api/register"], (req, res) => {
   });
 });
 
+// Admin Raffle Draw Endpoint
+server.all(["/admin/draw", "/api/admin/draw"], (req, res) => {
+  try {
+    const tickets = router.db.get("tickets").value() || [];
+    const pendingTickets = tickets.filter((t) => t.status === "pending");
+
+    if (pendingTickets.length === 0) {
+      return res.status(200).json({
+        status: "empty",
+        message: "No pending tickets in the raffle pool to draw.",
+        winner: null,
+        totalPending: 0
+      });
+    }
+
+    const winnerIndex = Math.floor(Math.random() * pendingTickets.length);
+    const winningTicket = pendingTickets[winnerIndex];
+
+    // Update status to 'won' in DB
+    router.db
+      .get("tickets")
+      .find({ id: winningTicket.id })
+      .assign({ status: "won" })
+      .write();
+
+    // Attach user details if found
+    const user = router.db
+      .get("users")
+      .find({ id: winningTicket.user_id })
+      .value();
+
+    const result = {
+      ...winningTicket,
+      status: "won",
+      user_name: user ? user.name : "Client",
+      user_email: user ? user.email : ""
+    };
+
+    return res.status(200).json({
+      status: "success",
+      message: "Winner successfully drawn!",
+      winner: result,
+      totalRemainingPending: pendingTickets.length - 1
+    });
+  } catch (err) {
+    console.error("Error in /admin/draw:", err);
+    return res.status(500).json({ status: 500, message: "Server error executing raffle draw." });
+  }
+});
+
+// Admin Reset Raffle Pool Endpoint (Reset all tickets to 'pending')
+server.all(["/admin/reset", "/api/admin/reset"], (req, res) => {
+  try {
+    const tickets = router.db.get("tickets").value() || [];
+    tickets.forEach((t) => {
+      router.db
+        .get("tickets")
+        .find({ id: t.id })
+        .assign({ status: "pending" })
+        .write();
+    });
+    return res.status(200).json({
+      status: "success",
+      message: "All ticket statuses reset to pending.",
+      totalTickets: tickets.length
+    });
+  } catch (err) {
+    console.error("Error in /admin/reset:", err);
+    return res.status(500).json({ status: 500, message: "Server error resetting pool." });
+  }
+});
+
 // Middleware to pre-process POST requests (injects user_id and created_at)
 server.use((req, res, next) => {
   if (req.method === "POST") {
@@ -176,7 +248,16 @@ server.use((req, res, next) => {
 
 // Auth check middleware for protected endpoints
 server.use((req, res, next) => {
-  const publicPaths = ["/login", "/api/login", "/register", "/api/register"];
+  const publicPaths = [
+    "/login",
+    "/api/login",
+    "/register",
+    "/api/register",
+    "/admin/draw",
+    "/api/admin/draw",
+    "/admin/reset",
+    "/api/admin/reset"
+  ];
   if (publicPaths.includes(req.path)) {
     return next();
   }

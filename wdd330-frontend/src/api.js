@@ -56,3 +56,50 @@ export async function createTicket(ticketData) {
 
   return await response.json();
 }
+
+/**
+ * Executes a random raffle draw for pending tickets.
+ */
+export async function drawRaffleWinner() {
+  const token = getToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch("/api/admin/draw", {
+    method: "POST",
+    headers
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Failed to execute raffle draw (${response.status})`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Resets all ticket statuses back to 'pending' for testing.
+ */
+export async function resetRafflePool() {
+  const token = getToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch("/api/admin/reset", {
+    method: "POST",
+    headers
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Failed to reset raffle pool (${response.status})`);
+  }
+
+  return await response.json();
+}
+

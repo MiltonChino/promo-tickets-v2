@@ -2,6 +2,8 @@ import "./style.css";
 import { createAuthModal } from "./authForm.js";
 import { saveSession, getUser, clearSession, isLoggedIn } from "./auth.js";
 import { renderDashboard } from "./dashboard.js";
+import { renderAdminRaffle } from "./adminRaffle.js";
+
 
 // Main App Container Setup
 document.querySelector("#app").innerHTML = `
@@ -22,7 +24,7 @@ document.querySelector("#app").innerHTML = `
       <nav class="nav-links" id="nav-actions-container">
         <a href="#" class="nav-link" id="nav-link-home">Home</a>
         <a href="#" class="nav-link" id="nav-link-dashboard">Dashboard</a>
-        <a href="#" class="nav-link disabled-link" id="nav-link-admin">Admin Raffle <span class="badge">Week 13</span></a>
+        <a href="#" class="nav-link" id="nav-link-admin">Admin Raffle</a>
         <div id="nav-auth-controls" style="display: flex; gap: 0.5rem; align-items: center;">
           <button class="btn btn-outline" id="btn-login">Sign In</button>
         </div>
@@ -228,6 +230,13 @@ function showDashboardView() {
   renderDashboard(container, showNotification);
 }
 
+// Renders the Admin Raffle View
+function showAdminRaffleView() {
+  const container = document.getElementById("main-view-container");
+  renderAdminRaffle(container, showNotification);
+}
+
+
 // Dynamically updates header navigation bar based on auth session
 function updateNavState() {
   const authControls = document.getElementById("nav-auth-controls");
@@ -317,6 +326,11 @@ document.getElementById("nav-link-dashboard")?.addEventListener("click", (e) => 
   e.preventDefault();
   showDashboardView();
 });
+document.getElementById("nav-link-admin")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  showAdminRaffleView();
+});
+
 
 // Initialize App Page Load
 updateNavState();
