@@ -1,0 +1,29 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "password_hash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "created_at": 1783814400000
+    },
+    {
+      "id": 2,
+      "name": "Admin User",
+      "email": "admin@example.com",
+      "password_hash": "a91176b6dd747d96b0147eb86d634dbf2c159239d5b4a928cfcb36c646eb30e7",
+      "created_at": 1783814400000
+    }
+  ],
+  "tickets": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "project_title": "E-Commerce Rebuild",
+      "project_description": "We need to migrate our legacy web shop to a modern design.",
+      "budget_range": "$5k - $10k",
+      "status": "pending",
+      "created_at": 1783814400000
+    }
+  ]
+}

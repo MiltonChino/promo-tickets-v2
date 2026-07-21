@@ -1,0 +1,19 @@
+{
+    "version": 2,
+    "outputDirectory": "public",
+    "builds": [
+      {
+        "src": "server.js",
+        "use": "@vercel/node",
+        "config": {
+            "includeFiles": ["database.json", "db.json"]
+          }
+      }
+    ],
+    "routes": [
+        {
+          "src": "/(.*)",
+          "dest": "server.js"
+        }
+      ]
+  }

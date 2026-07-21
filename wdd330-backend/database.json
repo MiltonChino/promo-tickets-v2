@@ -1,0 +1,52 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "password_hash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "created_at": 1783814400000
+    },
+    {
+      "id": 2,
+      "name": "Admin User",
+      "email": "admin@example.com",
+      "password_hash": "a91176b6dd747d96b0147eb86d634dbf2c159239d5b4a928cfcb36c646eb30e7",
+      "created_at": 1783814400000
+    },
+    {
+      "id": 3,
+      "name": "Bob Builder",
+      "email": "bob@example.com",
+      "password_hash": "c6ba91b90d922e159893f46c387e5dc1b3dc5c101a5a4522f03b987177a24a91",
+      "created_at": 1784082381702
+    },
+    {
+      "id": 4,
+      "name": "Milton Chino",
+      "email": "milton.chino97@gmail.com",
+      "password_hash": "f40017f219ba82c22cb808420347bdf9135c3e9581b76a3e8c12351a4ea1cc4f",
+      "created_at": 1784586011736
+    }
+  ],
+  "tickets": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "project_title": "E-Commerce Rebuild",
+      "project_description": "We need to migrate our legacy web shop to a modern design.",
+      "budget_range": "$5k - $10k",
+      "status": "pending",
+      "created_at": 1783814400000
+    },
+    {
+      "project_title": "Builder App",
+      "project_description": "App for ordering bricks.",
+      "budget_range": "$10k - $20k",
+      "user_id": 3,
+      "created_at": 1784083094301,
+      "status": "pending",
+      "id": 2
+    }
+  ]
+}
