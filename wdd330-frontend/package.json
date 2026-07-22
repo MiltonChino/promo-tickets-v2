@@ -8,6 +8,13 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "clone": "^2.1.2",
+    "json-server": "^0.17.1",
+    "jsonwebtoken": "^9.0.0",
+    "node-fetch": "^3.3.0",
+    "serverless-http": "^3.2.0"
+  },
   "devDependencies": {
     "vite": "^8.1.1"
   }

@@ -327,8 +327,10 @@ server.use((req, res, next) => {
 
 server.use(router);
 
-server.listen(3000, () => {
-  console.log("Run Auth API Server on port 3000");
-});
+if (require.main === module) {
+  server.listen(3000, () => {
+    console.log("Run Auth API Server on port 3000");
+  });
+}
 
 module.exports = server;

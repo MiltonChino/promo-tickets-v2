@@ -4,6 +4,13 @@
   base = "wdd330-frontend"
   publish = "dist"
   command = "npm run build"
+  functions = "netlify/functions"
+
+# Route /api requests to Netlify Serverless Function backend
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
 
 # SPA Single Page App fallback routing
 [[redirects]]
