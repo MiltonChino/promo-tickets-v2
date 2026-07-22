@@ -40,7 +40,7 @@ promo-tickets-app/
 
 ---
 
-## 2. Protected Admin Route & Simple Admin Login
+## 2. Protected Admin Route & Access Control
 
 The `/admin` (`/#admin`) route is strictly **protected**. Public client users cannot access the Admin Raffle panel.
 
@@ -54,6 +54,7 @@ The `/admin` (`/#admin`) route is strictly **protected**. Public client users ca
   1. Submitting the form calls `POST /api/admin/login` on [server.js](file:///d:/workspace/promo-tickets-v2/wdd330-backend/server.js).
   2. On success, an Admin session with `isAdmin: true` is saved in `localStorage`.
   3. The app redirects to the full Admin Raffle panel (`/#admin`) and updates the top bar with a `👑 Administrator` badge.
+* **System Status Visibility:** The top bar "Backend Online" badge and the home page "Database & System Check" card are hidden from all normal users and are displayed **exclusively** when logged in as an Admin user.
 * **Backend Endpoint:** `POST /api/admin/draw` (Executes random selection on pending tickets).
 
 ---
@@ -68,7 +69,7 @@ The project implementation is fully functional across all planned modules:
 | **Week 11: Authentication System** | Sign In / Registration modals, SHA-256 password hashing, JWT generation, and `localStorage` session management. | **COMPLETED** |
 | **Week 12: Ticket Submission Engine** | Client Dashboard, ticket submission form (Title, Description, Tech Stack, Urgency, Budget), and ticket listing UI. | **COMPLETED** |
 | **Week 13: Admin Raffle System** | Admin Raffle Panel, active ticket pool metrics, status filtering (`pending`, `won`, `closed`), and random draw execution engine. | **COMPLETED** |
-| **Week 14: Polishing & Security** | Created [start.sh](file:///d:/workspace/promo-tickets-v2/start.sh) bash script, protected `/#admin` route, dedicated simple Admin Login page, and hash routing. | **COMPLETED** |
+| **Week 14: Polishing & Security** | Created [start.sh](file:///d:/workspace/promo-tickets-v2/start.sh) bash script, protected `/#admin` route, dedicated simple Admin Login page, admin-only system check indicators, and hash routing. | **COMPLETED** |
 
 ---
 

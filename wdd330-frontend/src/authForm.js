@@ -82,7 +82,7 @@ export function createAuthModal(onLoginSubmit, onRegisterSubmit) {
           </div>
 
           <button type="submit" class="btn btn-primary btn-block" id="btn-submit-login">
-            <span class="btn-text">Sign In to Dashboard</span>
+            <span class="btn-text">Sign In</span>
             <span class="btn-spinner hidden"></span>
           </button>
         </form>

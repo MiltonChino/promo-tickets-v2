@@ -16,8 +16,8 @@ document.querySelector("#app").innerHTML = `
         <span class="logo-accent">⚡</span> DevConsult
       </div>
       
-      <!-- Live Connection Status Badge -->
-      <div class="connection-status" id="connection-status-pill">
+      <!-- Live Connection Status Badge (Admin Only) -->
+      <div class="connection-status" id="connection-status-pill" style="display: none;">
         <span class="status-dot ping"></span>
         <span class="status-text">Checking server...</span>
       </div>
@@ -41,12 +41,7 @@ document.querySelector("#app").innerHTML = `
   <!-- Footer -->
   <footer class="main-footer">
     <div class="footer-container">
-      <p>© 2026 DevConsult. All rights reserved. Lottery-Style Lead Gen App.</p>
-      <div class="footer-links">
-        <a href="https://vite.dev" target="_blank">Vite</a>
-        <span class="footer-dot">•</span>
-        <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">JavaScript</a>
-      </div>
+      <p>© 2026 DevConsult. All rights reserved.</p>
     </div>
   </footer>
 </div>
@@ -135,11 +130,12 @@ const authModal = createAuthModal(
 
 // Renders the Hero Landing Page View
 function showHomeView() {
+  const isAdmin = isAdminLoggedIn();
   const container = document.getElementById("main-view-container");
   container.innerHTML = `
     <!-- Hero Section -->
     <main class="hero-section">
-      <div class="hero-content">
+      <div class="hero-content" style="${!isAdmin ? 'max-width: 800px; margin: 0 auto; text-align: center;' : ''}">
         <h1 class="hero-title">
           Accelerate Your Tech with <span class="text-gradient">Free Expert Consultation</span>
         </h1>
@@ -147,7 +143,7 @@ function showHomeView() {
           Submit your project design, architecture, or code review challenges. Our lottery-style raffle draws random project tickets to award free professional consultation sessions.
         </p>
         
-        <div class="hero-actions">
+        <div class="hero-actions" style="${!isAdmin ? 'justify-content: center;' : ''}">
           <button class="btn btn-primary" id="btn-get-started">
             ${isLoggedIn() ? "Go to Dashboard" : "Get Started"}
           </button>
@@ -155,7 +151,8 @@ function showHomeView() {
         </div>
       </div>
 
-      <!-- Live Connection Verification Card -->
+      ${isAdmin ? `
+      <!-- Live Connection Verification Card (Admin Only) -->
       <div class="card connection-card">
         <div class="card-header">
           <h3 class="card-title">Database & System Check</h3>
@@ -170,6 +167,7 @@ function showHomeView() {
           <p>Testing connection to <code>http://localhost:3000/tickets</code>...</p>
         </div>
       </div>
+      ` : ''}
     </main>
 
     <!-- Features Grid Section -->
@@ -195,7 +193,7 @@ function showHomeView() {
           <div class="info-icon">🏆</div>
           <h4 class="info-title">3. Random Draw</h4>
           <p class="info-text">
-            The administrator triggers the drawing. Winners are updated to <code>won</code> and contacted.
+            The consulting team will review all tickets and randomly select winners to get a free consulting session. 
           </p>
         </div>
       </div>
@@ -280,14 +278,26 @@ function updateNavState() {
       authModal.openModal("login");
     });
   }
+
+  const statusPill = document.getElementById("connection-status-pill");
+  if (statusPill) {
+    statusPill.style.display = isAdminLoggedIn() ? "flex" : "none";
+  }
 }
 
-// Backend connectivity test function
+// Backend connectivity test function (Admin Only)
 async function checkBackendConnection() {
   const statusPill = document.getElementById("connection-status-pill");
-  if (!statusPill) return;
-  const statusDot = statusPill.querySelector(".status-dot");
-  const statusText = statusPill.querySelector(".status-text");
+  const isAdmin = isAdminLoggedIn();
+
+  if (statusPill) {
+    statusPill.style.display = isAdmin ? "flex" : "none";
+  }
+
+  if (!isAdmin) return;
+
+  const statusDot = statusPill?.querySelector(".status-dot");
+  const statusText = statusPill?.querySelector(".status-text");
   const display = document.getElementById("api-status-display");
 
   try {
@@ -295,9 +305,9 @@ async function checkBackendConnection() {
     if (display) display.innerHTML = "";
 
     if (response.status === 401 || response.status === 200) {
-      statusPill.className = "connection-status success";
-      statusDot.className = "status-dot online";
-      statusText.textContent = "Backend Online";
+      if (statusPill) statusPill.className = "connection-status success";
+      if (statusDot) statusDot.className = "status-dot online";
+      if (statusText) statusText.textContent = "Backend Online";
 
       if (display) {
         display.innerHTML = `
@@ -315,9 +325,9 @@ async function checkBackendConnection() {
     }
   } catch (error) {
     console.error("Backend connection failed:", error);
-    statusPill.className = "connection-status error";
-    statusDot.className = "status-dot offline-dot";
-    statusText.textContent = "Backend Offline";
+    if (statusPill) statusPill.className = "connection-status error";
+    if (statusDot) statusDot.className = "status-dot offline-dot";
+    if (statusText) statusText.textContent = "Backend Offline";
   }
 }
 
