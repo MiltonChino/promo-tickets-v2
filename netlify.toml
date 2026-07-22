@@ -1,0 +1,12 @@
+# Netlify Deployment Configuration for promo-tickets-v2
+
+[build]
+  base = "wdd330-frontend"
+  publish = "dist"
+  command = "npm run build"
+
+# SPA Single Page App fallback routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
