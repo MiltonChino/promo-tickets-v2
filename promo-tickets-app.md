@@ -1,8 +1,8 @@
-# Git Report: promo-tickets-app
+# Git Report & System Overview: promo-tickets-app
 
 **Repository Name:** `promo-tickets-app`  
 **Root Path:** [d:\workspace\promo-tickets-v2](file:///d:/workspace/promo-tickets-v2)  
-**Date:** July 20, 2026  
+**Date:** July 21, 2026  
 **Default Branch:** `main` / `master`  
 
 ---
@@ -17,9 +17,10 @@ promo-tickets-app/
 ├── plan.md                         # Master 14-week project development plan
 ├── implementation_plan.md          # Technical setup & proxy configuration guide
 ├── walkthrough.md                  # Development setup walkthrough
-├── week_11_step_1_report.md        # Completion report for Week 11 Step 1
+├── start.sh                        # Bash script to concurrently start backend & frontend
+├── promo-tickets-app.md            # System documentation & development report
 ├── wdd330-backend/                 # Express + Node.js + json-server Auth API
-│   ├── server.js                   # API routes (/api/login, /api/register, /api/tickets)
+│   ├── server.js                   # API routes (/api/login, /api/register, /api/tickets, /api/admin/login, /api/admin/draw)
 │   ├── database.json               # Local JSON database storage
 │   ├── db.json                     # Production fallback seed data
 │   └── package.json                # Backend dependencies
@@ -27,65 +28,73 @@ promo-tickets-app/
     ├── index.html                  # Main HTML entry point & font links
     ├── vite.config.js              # Vite dev server & API proxy config (/api -> localhost:3000)
     └── src/
-        ├── main.js                 # App controller, event handlers & API integration
-        ├── style.css               # Core CSS design system & Auth Modal styles
-        └── authForm.js             # Auth Modal component (Sign In / Register tab views)
+        ├── main.js                 # App controller, protected hash routing & nav state
+        ├── style.css               # Core CSS design system & component styles
+        ├── api.js                  # API fetch helper functions for tickets and auth
+        ├── auth.js                 # LocalStorage token & user/admin session management
+        ├── authForm.js             # Client Auth Modal component (Sign In / Register tab views)
+        ├── dashboard.js            # Client Dashboard (ticket listing & creation form)
+        ├── adminLogin.js           # Dedicated Admin Login page (simple admin auth form)
+        └── adminRaffle.js          # Admin Raffle Panel (pool statistics & random winner drawing)
 ```
 
 ---
 
-## 2. Git Status Overview
+## 2. Protected Admin Route & Simple Admin Login
+
+The `/admin` (`/#admin`) route is strictly **protected**. Public client users cannot access the Admin Raffle panel.
+
+### Admin Access Rules & Credentials
+* **Admin Login Route:** `http://localhost:5173/#admin` (or `/#admin-login`)
+* **Access Control:** If an unauthenticated user or normal client user attempts to navigate to `/#admin`, the router forces redirection to the dedicated **Simple Admin Login** page ([adminLogin.js](file:///d:/workspace/promo-tickets-v2/wdd330-frontend/src/adminLogin.js)).
+* **Admin Credentials:**
+  - **Username:** `admin`
+  - **Password:** `admin`
+* **Authentication Flow:**
+  1. Submitting the form calls `POST /api/admin/login` on [server.js](file:///d:/workspace/promo-tickets-v2/wdd330-backend/server.js).
+  2. On success, an Admin session with `isAdmin: true` is saved in `localStorage`.
+  3. The app redirects to the full Admin Raffle panel (`/#admin`) and updates the top bar with a `👑 Administrator` badge.
+* **Backend Endpoint:** `POST /api/admin/draw` (Executes random selection on pending tickets).
+
+---
+
+## 3. Current Development Status
+
+The project implementation is fully functional across all planned modules:
+
+| Module / Milestone | Description | Status |
+| :--- | :--- | :---: |
+| **Week 10: Setup & DB Design** | Initialized backend Node server, `database.json`, Vite frontend setup, and proxy routing. | **COMPLETED** |
+| **Week 11: Authentication System** | Sign In / Registration modals, SHA-256 password hashing, JWT generation, and `localStorage` session management. | **COMPLETED** |
+| **Week 12: Ticket Submission Engine** | Client Dashboard, ticket submission form (Title, Description, Tech Stack, Urgency, Budget), and ticket listing UI. | **COMPLETED** |
+| **Week 13: Admin Raffle System** | Admin Raffle Panel, active ticket pool metrics, status filtering (`pending`, `won`, `closed`), and random draw execution engine. | **COMPLETED** |
+| **Week 14: Polishing & Security** | Created [start.sh](file:///d:/workspace/promo-tickets-v2/start.sh) bash script, protected `/#admin` route, dedicated simple Admin Login page, and hash routing. | **COMPLETED** |
+
+---
+
+## 4. Git Status Overview
 
 ### Root Repository Initialization
 * Initialized local Git repository in `d:\workspace\promo-tickets-v2`.
 * Created root [.gitignore](file:///d:/workspace/promo-tickets-v2/.gitignore) excluding `node_modules`, build artifacts (`dist`), environment files, and system logs.
 
-### Untracked & Modified Workspace Files
+### Workspace Files & Components
 | Path | Description | Status |
 | :--- | :--- | :---: |
-| [.gitignore](file:///d:/workspace/promo-tickets-v2/.gitignore) | Workspace git ignore rules | **NEW** |
-| [plan.md](file:///d:/workspace/promo-tickets-v2/plan.md) | Project schedule & architecture specs | **UNTRACKED** |
-| [implementation_plan.md](file:///d:/workspace/promo-tickets-v2/implementation_plan.md) | Technical setup plan | **UNTRACKED** |
-| [walkthrough.md](file:///d:/workspace/promo-tickets-v2/walkthrough.md) | Setup walkthrough documentation | **UNTRACKED** |
-| [wdd330-backend/](file:///d:/workspace/promo-tickets-v2/wdd330-backend) | Node.js backend server codebase | **UNTRACKED** |
-| [wdd330-frontend/](file:///d:/workspace/promo-tickets-v2/wdd330-frontend) | Vite Vanilla JS client codebase | **UNTRACKED** |
+| [.gitignore](file:///d:/workspace/promo-tickets-v2/.gitignore) | Workspace git ignore rules | **TRACKED** |
+| [start.sh](file:///d:/workspace/promo-tickets-v2/start.sh) | Concurrent dual-service startup script | **NEW** |
+| [plan.md](file:///d:/workspace/promo-tickets-v2/plan.md) | Project schedule & architecture specs | **TRACKED** |
+| [promo-tickets-app.md](file:///d:/workspace/promo-tickets-v2/promo-tickets-app.md) | Documentation & system status report | **MODIFIED** |
+| [wdd330-backend/](file:///d:/workspace/promo-tickets-v2/wdd330-backend) | Node.js backend server codebase | **TRACKED** |
+| [wdd330-frontend/](file:///d:/workspace/promo-tickets-v2/wdd330-frontend) | Vite Vanilla JS client codebase | **TRACKED** |
 
 ---
 
-## 3. Work Completed To Date (Feature Changelog)
+## 5. Running the Application
 
-### A. Environment Setup & DB Design (Week 10 Milestone)
-* **Backend API:** Configured Node.js server with Express, `json-server`, and JWT authentication in [server.js](file:///d:/workspace/promo-tickets-v2/wdd330-backend/server.js).
-* **Database Schema:** Initialized `users` (hashed passwords) and `tickets` entities in [database.json](file:///d:/workspace/promo-tickets-v2/wdd330-backend/database.json).
-* **Frontend Setup:** Initialized Vite app in `wdd330-frontend` with dev server proxy in [vite.config.js](file:///d:/workspace/promo-tickets-v2/wdd330-frontend/vite.config.js).
-
-### B. Authentication & Modal Layout (Week 11 - Step 1)
-* **Auth Component:** Created [authForm.js](file:///d:/workspace/promo-tickets-v2/wdd330-frontend/src/authForm.js) providing modal views for Sign In and Account Registration with tab toggles.
-* **Client-Side Validation:** Form validation engine checking required fields, email regex format, min password length (6 chars), and password confirmation matching.
-* **Design System:** Created design tokens, typography, glassmorphism modal overlay, and CSS pop-in animations in [style.css](file:///d:/workspace/promo-tickets-v2/wdd330-frontend/src/style.css).
-* **API Route Fix:** Corrected registration fetch endpoint in [main.js](file:///d:/workspace/promo-tickets-v2/wdd330-frontend/src/main.js) to call `POST /api/register` with `{ name, email, password }`, resolving the 401 Authorization error.
-
----
-
-## 4. Recommended Staging & Initial Commit Workflow
-
-To record the baseline commit for `promo-tickets-app`, execute the following git commands in the root directory:
+To launch both the backend (port 3000) and frontend (port 5173) simultaneously:
 
 ```bash
-# 1. Stage all untracked and modified project files
-git add .
-
-# 2. Create the initial baseline commit
-git commit -m "feat(init): initialize promo-tickets-app with backend API, Vite frontend, and Auth modal"
-
-# 3. Rename default branch to main (optional)
-git branch -M main
+chmod +x start.sh
+./start.sh
 ```
-
----
-
-## 5. Next Planned Branches & Milestones
-
-* `feat/session-storage`: Implement JWT token retention in `localStorage` and header state updates (Week 11 Step 2 & 3).
-* `feat/ticket-submission`: Build Client Dashboard & Ticket Submission Form (Week 12).
-* `feat/admin-raffle`: Implement Admin Panel & Random Draw winner algorithm (Week 13).

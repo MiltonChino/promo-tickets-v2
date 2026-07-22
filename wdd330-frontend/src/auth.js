@@ -34,3 +34,9 @@ export function clearSession() {
 export function isLoggedIn() {
   return Boolean(getToken());
 }
+
+export function isAdminLoggedIn() {
+  if (!isLoggedIn()) return false;
+  const user = getUser();
+  return Boolean(user && (user.role === "admin" || user.isAdmin === true || user.email === "admin"));
+}

@@ -169,8 +169,10 @@ body {
   gap: 0.25rem;
 }
 
-.nav-link:hover {
-  color: var(--text-main);
+.nav-link:hover,
+.nav-link.active {
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .disabled-link {

@@ -71,6 +71,28 @@ function isAuthenticated({ email, password }) {
   );
 }
 
+server.post(["/admin/login", "/api/admin/login"], (req, res) => {
+  const username = req.body.username || req.body.email;
+  const password = req.body.password;
+  console.log("Admin login attempt:", username);
+
+  if ((username === "admin" || username === "admin@example.com" || username === "admin@devconsult.com") && password === "admin") {
+    const accessToken = createToken({ email: "admin@devconsult.com", role: "admin" });
+    return res.status(200).json({
+      accessToken,
+      user: {
+        id: 999,
+        name: "Administrator",
+        email: "admin",
+        role: "admin",
+        isAdmin: true
+      }
+    });
+  } else {
+    return res.status(401).json({ status: 401, message: "Invalid admin credentials. Access permitted for admin account only." });
+  }
+});
+
 server.post(["/login", "/api/login"], (req, res) => {
   const { email, password } = req.body;
   console.log("Login attempt:", email);
@@ -78,6 +100,22 @@ server.post(["/login", "/api/login"], (req, res) => {
     res.status(400).json({ status: 400, message: "Email and password are required" });
     return;
   }
+
+  // Handle special admin login via general login endpoint
+  if ((email === "admin" || email === "admin@example.com") && password === "admin") {
+    const accessToken = createToken({ email: "admin@devconsult.com", role: "admin" });
+    return res.status(200).json({
+      accessToken,
+      user: {
+        id: 999,
+        name: "Administrator",
+        email: "admin",
+        role: "admin",
+        isAdmin: true
+      }
+    });
+  }
+
   if (isAuthenticated({ email, password }) === false) {
     const status = 401;
     const message = "Incorrect email or password";
@@ -95,7 +133,9 @@ server.post(["/login", "/api/login"], (req, res) => {
     user: {
       id: user ? user.id : 1,
       name: user ? user.name : "User",
-      email
+      email,
+      role: (user && user.role) || "client",
+      isAdmin: Boolean(user && user.role === "admin")
     }
   });
 });
@@ -253,6 +293,8 @@ server.use((req, res, next) => {
     "/api/login",
     "/register",
     "/api/register",
+    "/admin/login",
+    "/api/admin/login",
     "/admin/draw",
     "/api/admin/draw",
     "/admin/reset",

@@ -1,8 +1,9 @@
 import "./style.css";
 import { createAuthModal } from "./authForm.js";
-import { saveSession, getUser, clearSession, isLoggedIn } from "./auth.js";
+import { saveSession, getUser, clearSession, isLoggedIn, isAdminLoggedIn } from "./auth.js";
 import { renderDashboard } from "./dashboard.js";
 import { renderAdminRaffle } from "./adminRaffle.js";
+import { renderAdminLogin } from "./adminLogin.js";
 
 
 // Main App Container Setup
@@ -22,9 +23,8 @@ document.querySelector("#app").innerHTML = `
       </div>
 
       <nav class="nav-links" id="nav-actions-container">
-        <a href="#" class="nav-link" id="nav-link-home">Home</a>
-        <a href="#" class="nav-link" id="nav-link-dashboard">Dashboard</a>
-        <a href="#" class="nav-link" id="nav-link-admin">Admin Raffle</a>
+        <a href="#home" class="nav-link" id="nav-link-home">Home</a>
+        <a href="#dashboard" class="nav-link" id="nav-link-dashboard">Dashboard</a>
         <div id="nav-auth-controls" style="display: flex; gap: 0.5rem; align-items: center;">
           <button class="btn btn-outline" id="btn-login">Sign In</button>
         </div>
@@ -90,7 +90,7 @@ const authModal = createAuthModal(
         showNotification(`Welcome back, ${getUser().name}!`, "success");
         authModal.closeModal();
         updateNavState();
-        showDashboardView();
+        navigateTo("#dashboard");
       } else {
         authModal.setAlert(data.message || "Invalid credentials. Please try again.", "error");
       }
@@ -121,7 +121,7 @@ const authModal = createAuthModal(
         showNotification("Account created & logged in! Welcome to DevConsult.", "success");
         authModal.closeModal();
         updateNavState();
-        showDashboardView();
+        navigateTo("#dashboard");
       } else {
         authModal.setAlert(data.message || "Failed to register account.", "error");
       }
@@ -205,7 +205,7 @@ function showHomeView() {
   // Attach Hero section event listeners
   document.getElementById("btn-get-started")?.addEventListener("click", () => {
     if (isLoggedIn()) {
-      showDashboardView();
+      navigateTo("#dashboard");
     } else {
       authModal.openModal("register");
     }
@@ -230,8 +230,22 @@ function showDashboardView() {
   renderDashboard(container, showNotification);
 }
 
-// Renders the Admin Raffle View
+// Renders the dedicated Admin Login View
+function showAdminLoginView() {
+  const container = document.getElementById("main-view-container");
+  renderAdminLogin(container, showNotification, () => {
+    updateNavState();
+    navigateTo("#admin");
+  });
+}
+
+// Renders the Admin Raffle View (Protected for Admin user only)
 function showAdminRaffleView() {
+  if (!isAdminLoggedIn()) {
+    showNotification("Admin login required to access the admin panel.", "info");
+    showAdminLoginView();
+    return;
+  }
   const container = document.getElementById("main-view-container");
   renderAdminRaffle(container, showNotification);
 }
@@ -244,9 +258,10 @@ function updateNavState() {
 
   if (isLoggedIn()) {
     const user = getUser() || { name: "Client" };
+    const isAdmin = isAdminLoggedIn();
     authControls.innerHTML = `
-      <div class="user-avatar-pill">
-        <span>👤</span> ${escapeHtml(user.name)}
+      <div class="user-avatar-pill" style="${isAdmin ? 'border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.1); color: #ef4444;' : ''}">
+        <span>${isAdmin ? "👑" : "👤"}</span> ${escapeHtml(user.name)}
       </div>
       <button class="btn btn-outline btn-signout" id="btn-logout">Sign Out</button>
     `;
@@ -255,7 +270,7 @@ function updateNavState() {
       clearSession();
       showNotification("You have signed out.", "info");
       updateNavState();
-      showHomeView();
+      navigateTo("#home");
     });
   } else {
     authControls.innerHTML = `
@@ -316,26 +331,67 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+// Navigation Helper to programmatically update URL route
+export function navigateTo(hash) {
+  if (window.location.hash !== hash) {
+    window.location.hash = hash;
+  } else {
+    handleRoute();
+  }
+}
+
 // Set up Top Header Navigation Click Listeners
-document.getElementById("brand-logo")?.addEventListener("click", showHomeView);
+document.getElementById("brand-logo")?.addEventListener("click", () => navigateTo("#home"));
 document.getElementById("nav-link-home")?.addEventListener("click", (e) => {
   e.preventDefault();
-  showHomeView();
+  navigateTo("#home");
 });
 document.getElementById("nav-link-dashboard")?.addEventListener("click", (e) => {
   e.preventDefault();
-  showDashboardView();
-});
-document.getElementById("nav-link-admin")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  showAdminRaffleView();
+  navigateTo("#dashboard");
 });
 
+function handleRoute() {
+  const rawHash = window.location.hash;
+  // Fallback to default route if hash is empty or just '#'
+  const hash = (rawHash && rawHash !== "#") ? rawHash : (isLoggedIn() ? "#dashboard" : "#home");
+
+  if (window.location.hash !== hash && (!rawHash || rawHash === "#")) {
+    window.location.hash = hash;
+    return;
+  }
+
+  // Highlight active nav links
+  document.getElementById("nav-link-home")?.classList.toggle("active", hash === "#home");
+  document.getElementById("nav-link-dashboard")?.classList.toggle("active", hash === "#dashboard");
+
+  if (hash === "#admin" || hash === "#admin-raffle") {
+    if (isAdminLoggedIn()) {
+      showAdminRaffleView();
+    } else {
+      showAdminLoginView();
+    }
+  } else if (hash === "#admin-login") {
+    if (isAdminLoggedIn()) {
+      navigateTo("#admin");
+    } else {
+      showAdminLoginView();
+    }
+  } else if (hash === "#dashboard") {
+    if (isLoggedIn()) {
+      showDashboardView();
+    } else {
+      showNotification("Please sign in to view your dashboard.", "info");
+      navigateTo("#home");
+      authModal.openModal("login");
+    }
+  } else {
+    showHomeView();
+  }
+}
+
+window.addEventListener("hashchange", handleRoute);
 
 // Initialize App Page Load
 updateNavState();
-if (isLoggedIn()) {
-  showDashboardView();
-} else {
-  showHomeView();
-}
+handleRoute();
