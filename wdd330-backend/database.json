@@ -27,6 +27,13 @@
       "email": "milton.chino97@gmail.com",
       "password_hash": "f40017f219ba82c22cb808420347bdf9135c3e9581b76a3e8c12351a4ea1cc4f",
       "created_at": 1784586011736
+    },
+    {
+      "id": 5,
+      "name": "John Doe",
+      "email": "jd@this.this",
+      "password_hash": "1718c24b10aeb8099e3fc44960ab6949ab76a267352459f203ea1036bec382c2",
+      "created_at": 1784778304496
     }
   ],
   "tickets": [
@@ -70,9 +77,27 @@
       "project_title": "apointment system for consulting 2",
       "project_description": "same project more features needed.",
       "budget_range": "$10k - $20k",
-      "status": "pending",
+      "status": "won",
       "created_at": 1784690286318,
       "id": 5
+    },
+    {
+      "project_title": "App for my gym",
+      "project_description": "Need to control monthly subcriptions, and promos for clients",
+      "budget_range": "$10k - $20k",
+      "status": "pending",
+      "user_id": 5,
+      "created_at": 1784778350752,
+      "id": 6
+    },
+    {
+      "project_title": "E-commerce platform for service reselling",
+      "project_description": "Need a database and interface for clients to find a lot of services in my country",
+      "budget_range": "$20k+",
+      "status": "pending",
+      "user_id": 4,
+      "created_at": 1784778473498,
+      "id": 7
     }
   ]
 }
