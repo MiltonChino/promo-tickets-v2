@@ -15,12 +15,6 @@ document.querySelector("#app").innerHTML = `
       <div class="logo" id="brand-logo" style="cursor: pointer;">
         <span class="logo-accent">⚡</span> DevConsult
       </div>
-      
-      <!-- Live Connection Status Badge (Admin Only) -->
-      <div class="connection-status" id="connection-status-pill" style="display: none;">
-        <span class="status-dot ping"></span>
-        <span class="status-text">Checking server...</span>
-      </div>
 
       <nav class="nav-links" id="nav-actions-container">
         <a href="#home" class="nav-link" id="nav-link-home">Home</a>

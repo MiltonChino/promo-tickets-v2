@@ -68,7 +68,7 @@
       "project_title": "web app for restaurant",
       "project_description": "I need an online ordering system with QR payments available",
       "budget_range": "$5k - $10k",
-      "status": "pending",
+      "status": "won",
       "user_id": 4,
       "created_at": 1784679924483,
       "id": 4
@@ -94,7 +94,7 @@
       "project_title": "E-commerce platform for service reselling",
       "project_description": "Need a database and interface for clients to find a lot of services in my country",
       "budget_range": "$20k+",
-      "status": "pending",
+      "status": "won",
       "user_id": 4,
       "created_at": 1784778473498,
       "id": 7
