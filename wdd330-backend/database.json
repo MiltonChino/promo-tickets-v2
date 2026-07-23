@@ -59,7 +59,7 @@
       "project_title": "apointment system for consulting",
       "project_description": "I need a simple system for users to login and choose their apointment date, time, need, and contact",
       "budget_range": "$1k - $5k",
-      "status": "won",
+      "status": "pending",
       "user_id": 4,
       "created_at": 1784679864119,
       "id": 3
@@ -77,7 +77,7 @@
       "project_title": "apointment system for consulting 2",
       "project_description": "same project more features needed.",
       "budget_range": "$10k - $20k",
-      "status": "won",
+      "status": "pending",
       "created_at": 1784690286318,
       "id": 5
     },
