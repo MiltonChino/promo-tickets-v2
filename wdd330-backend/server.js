@@ -60,6 +60,33 @@ function verifyToken(token) {
   });
 }
 
+
+// Authorize privileged operations before their route handlers run.
+function requireAdmin(req, res, next) {
+  const authorization = req.headers.authorization;
+  const match = typeof authorization === "string"
+    ? /^Bearer ([^\s]+)$/.exec(authorization)
+    : null;
+
+  if (!match) {
+    return res.status(401).json({ status: 401, message: "A valid Bearer token is required" });
+  }
+
+  let claims;
+  try {
+    claims = verifyToken(match[1]);
+  } catch (err) {
+    return res.status(401).json({ status: 401, message: "Invalid or expired token" });
+  }
+
+  if (!claims || claims.role !== "admin") {
+    return res.status(403).json({ status: 403, message: "Administrator access required" });
+  }
+
+  req.claims = claims;
+  return next();
+}
+
 // Check if the user exists in database using hashed password comparison
 function isAuthenticated({ email, password }) {
   const hashedPassword = hashPassword(password);
@@ -186,7 +213,7 @@ server.post(["/register", "/api/register"], (req, res) => {
 });
 
 // Admin Raffle Draw Endpoint
-server.all(["/admin/draw", "/api/admin/draw"], (req, res) => {
+server.post(["/admin/draw", "/api/admin/draw"], requireAdmin, (req, res) => {
   try {
     const tickets = router.db.get("tickets").value() || [];
     const pendingTickets = tickets.filter((t) => t.status === "pending");
@@ -236,7 +263,7 @@ server.all(["/admin/draw", "/api/admin/draw"], (req, res) => {
 });
 
 // Admin Reset Raffle Pool Endpoint (Reset all tickets to 'pending')
-server.all(["/admin/reset", "/api/admin/reset"], (req, res) => {
+server.post(["/admin/reset", "/api/admin/reset"], requireAdmin, (req, res) => {
   try {
     const tickets = router.db.get("tickets").value() || [];
     tickets.forEach((t) => {
@@ -294,11 +321,7 @@ server.use((req, res, next) => {
     "/register",
     "/api/register",
     "/admin/login",
-    "/api/admin/login",
-    "/admin/draw",
-    "/api/admin/draw",
-    "/admin/reset",
-    "/api/admin/reset"
+    "/api/admin/login"
   ];
   if (publicPaths.includes(req.path)) {
     return next();
@@ -334,3 +357,4 @@ if (require.main === module) {
 }
 
 module.exports = server;
+
