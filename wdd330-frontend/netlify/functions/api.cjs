@@ -69,6 +69,33 @@ function verifyToken(token) {
   return jwt.verify(token, SECRET_KEY);
 }
 
+
+// Authorize privileged operations before their route handlers run.
+function requireAdmin(req, res, next) {
+  const authorization = req.headers.authorization;
+  const match = typeof authorization === "string"
+    ? /^Bearer ([^\s]+)$/.exec(authorization)
+    : null;
+
+  if (!match) {
+    return res.status(401).json({ status: 401, message: "A valid Bearer token is required" });
+  }
+
+  let claims;
+  try {
+    claims = verifyToken(match[1]);
+  } catch (err) {
+    return res.status(401).json({ status: 401, message: "Invalid or expired token" });
+  }
+
+  if (!claims || claims.role !== "admin") {
+    return res.status(403).json({ status: 403, message: "Administrator access required" });
+  }
+
+  req.claims = claims;
+  return next();
+}
+
 function findUserByEmailAndPassword(email, password) {
   const hashedPassword = hashPassword(password);
   return usersStore.find(
@@ -219,8 +246,8 @@ const handleDraw = (req, res) => {
     return res.status(500).json({ status: 500, message: "Server error executing raffle draw." });
   }
 };
-app.all("/admin/draw", handleDraw);
-app.all("/api/admin/draw", handleDraw);
+app.post("/admin/draw", requireAdmin, handleDraw);
+app.post("/api/admin/draw", requireAdmin, handleDraw);
 
 // Admin Reset Endpoint
 const handleReset = (req, res) => {
@@ -233,17 +260,15 @@ const handleReset = (req, res) => {
     totalTickets: ticketsStore.length
   });
 };
-app.all("/admin/reset", handleReset);
-app.all("/api/admin/reset", handleReset);
+app.post("/admin/reset", requireAdmin, handleReset);
+app.post("/api/admin/reset", requireAdmin, handleReset);
 
 // Auth check middleware for protected endpoints
 app.use((req, res, next) => {
   const publicPaths = [
     "/login", "/api/login",
     "/register", "/api/register",
-    "/admin/login", "/api/admin/login",
-    "/admin/draw", "/api/admin/draw",
-    "/admin/reset", "/api/admin/reset"
+    "/admin/login", "/api/admin/login"
   ];
   if (publicPaths.includes(req.path)) {
     return next();
@@ -294,3 +319,4 @@ app.post("/tickets", handlePostTicket);
 app.post("/api/tickets", handlePostTicket);
 
 module.exports.handler = serverless(app);
+
