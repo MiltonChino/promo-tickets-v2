@@ -15,6 +15,7 @@
 ### Security & Architecture Overhaul (`feature/security-and-auth-unification`):
 All high-risk security flaws identified in initial assessment have been mitigated on the feature branch:
 - **Unified Single Login Page:** Removed the separate administrative login page and hardcoded demo shortcuts. Both clients and administrators authenticate through a single, secure login dialog with automatic role-based routing.
+- **Mobile Responsive Navigation & Layout:** Added an interactive animated hamburger menu button, sliding mobile navigation drawer, and fine-tuned responsive layouts across all views (Hero, Dashboard, Admin Raffle, and Toast Notifications) to ensure seamless usability on phones and mobile browsers.
 - **Endpoint Protection & Role Enforcement:** `/api/admin/draw` and `/api/admin/reset` are now strictly protected against unauthenticated callers (401) and non-admin users (403 Forbidden).
 - **IDOR Elimination:** Ticket endpoints now enforce user isolation—clients can only access their own submissions, eliminating cross-client data leaks.
 - **Data Sanitization & Secret Externalization:** All hardcoded secrets (`JWT_SECRET`) and administrative credentials (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) have been moved into `.env` (with `.env.example` committed). Personal identifying data (real emails/names) in `database.json` has been replaced with sanitized sample data.
