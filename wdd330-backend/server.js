@@ -202,6 +202,59 @@ server.post(["/register", "/api/register"], (req, res) => {
 });
 
 // --------------------------------------------------------------------------
+// ROI Calculator Logic & Public Endpoint
+// --------------------------------------------------------------------------
+function calculateROI(params) {
+  const teamSize = Math.max(1, Number(params.team_size) || 5);
+  const hourlyRate = Math.max(1, Number(params.hourly_rate) || 45);
+  const hoursLostWeekly = Math.max(0, Number(params.hours_lost_weekly) || 6);
+  const annualRevenue = Math.max(0, Number(params.annual_revenue) || 500000);
+  const efficiencyGainPct = Math.min(100, Math.max(0, Number(params.efficiency_gain_pct) || 70)) / 100;
+  const softwareInvestment = Math.max(100, Number(params.software_investment) || 10000);
+
+  const totalAnnualHoursLost = teamSize * hoursLostWeekly * 52;
+  const hoursReclaimed = Math.round(totalAnnualHoursLost * efficiencyGainPct);
+  const annualLaborSaved = Math.round(hoursReclaimed * hourlyRate);
+  const revenueBoostPct = efficiencyGainPct * 0.05;
+  const annualNewRevenue = Math.round(annualRevenue * revenueBoostPct);
+  const totalAnnualValue = annualLaborSaved + annualNewRevenue;
+  const netFirstYearProfit = totalAnnualValue - softwareInvestment;
+  const roiPercentage = Math.round(((totalAnnualValue - softwareInvestment) / softwareInvestment) * 1000) / 10;
+  const paybackMonths = totalAnnualValue > 0
+    ? Math.round((softwareInvestment / (totalAnnualValue / 12)) * 10) / 10
+    : 0;
+  const threeYearCumulativeValue = Math.round((totalAnnualValue * 3) - softwareInvestment);
+
+  return {
+    status: "success",
+    inputs: {
+      team_size: teamSize,
+      hourly_rate: hourlyRate,
+      hours_lost_weekly: hoursLostWeekly,
+      annual_revenue: annualRevenue,
+      efficiency_gain_pct: Math.round(efficiencyGainPct * 100),
+      software_investment: softwareInvestment
+    },
+    metrics: {
+      hours_reclaimed_annually: hoursReclaimed,
+      annual_labor_saved: annualLaborSaved,
+      annual_new_revenue: annualNewRevenue,
+      total_annual_value: totalAnnualValue,
+      net_first_year_profit: netFirstYearProfit,
+      roi_percentage: roiPercentage,
+      payback_months: paybackMonths,
+      three_year_cumulative_value: threeYearCumulativeValue
+    }
+  };
+}
+
+// POST /api/roi: Public ROI calculation endpoint
+server.post(["/roi", "/api/roi"], (req, res) => {
+  const result = calculateROI(req.body || {});
+  return res.status(200).json(result);
+});
+
+// --------------------------------------------------------------------------
 // Authentication Verification Middleware
 // --------------------------------------------------------------------------
 server.use((req, res, next) => {
@@ -211,7 +264,9 @@ server.use((req, res, next) => {
     "/register",
     "/api/register",
     "/admin/login",
-    "/api/admin/login"
+    "/api/admin/login",
+    "/roi",
+    "/api/roi"
   ];
 
   if (publicPaths.includes(req.path)) {

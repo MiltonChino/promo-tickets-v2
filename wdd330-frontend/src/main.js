@@ -3,6 +3,7 @@ import { createAuthModal } from "./authForm.js";
 import { saveSession, getUser, clearSession, isLoggedIn, isAdminLoggedIn } from "./auth.js";
 import { renderDashboard } from "./dashboard.js";
 import { renderAdminRaffle } from "./adminRaffle.js";
+import { renderRoiCalculator } from "./roiCalculator.js";
 
 // Main App Container Setup
 document.querySelector("#app").innerHTML = `
@@ -155,7 +156,8 @@ function showHomeView() {
           <button class="btn btn-primary" id="btn-get-started">
             ${isAdmin ? "Go to Admin Panel" : loggedIn ? "Go to Dashboard" : "Get Started"}
           </button>
-          <button class="btn btn-secondary" id="btn-learn-more">How it Works</button>
+          <button class="btn btn-secondary" id="btn-hero-calculator">📊 Calculate ROI</button>
+          <button class="btn btn-outline" id="btn-learn-more">How it Works</button>
         </div>
       </div>
 
@@ -204,6 +206,13 @@ function showHomeView() {
             Administrators trigger the random selection engine to award free consultation sessions to lucky entrants!
           </p>
         </div>
+        <div class="info-card" id="card-info-calculator" style="cursor: pointer;">
+          <div class="info-icon">📊</div>
+          <h4 class="info-title">4. Calculate ROI</h4>
+          <p class="info-text">
+            Use our interactive business modeler to project annual labor savings and value creation before submitting.
+          </p>
+        </div>
       </div>
     </section>
   `;
@@ -219,6 +228,14 @@ function showHomeView() {
     }
   });
 
+  document.getElementById("btn-hero-calculator")?.addEventListener("click", () => {
+    navigateTo("#calculator");
+  });
+
+  document.getElementById("card-info-calculator")?.addEventListener("click", () => {
+    navigateTo("#calculator");
+  });
+
   document.getElementById("btn-learn-more")?.addEventListener("click", () => {
     document.getElementById("info-section")?.scrollIntoView({ behavior: "smooth" });
   });
@@ -226,6 +243,12 @@ function showHomeView() {
   if (isAdmin) {
     checkBackendConnection();
   }
+}
+
+// Renders the ROI Calculator View
+function showRoiCalculatorView() {
+  const container = document.getElementById("main-view-container");
+  renderRoiCalculator(container, showNotification);
 }
 
 // Renders the Client Dashboard View
@@ -268,6 +291,7 @@ function updateNavState() {
 
   navContainer.innerHTML = `
     <a href="#home" class="nav-link" id="nav-link-home">Home</a>
+    <a href="#calculator" class="nav-link" id="nav-link-calculator">ROI Calculator</a>
     ${loggedIn && !isAdmin ? '<a href="#dashboard" class="nav-link" id="nav-link-dashboard">Dashboard</a>' : ''}
     ${isAdmin ? '<a href="#admin" class="nav-link" id="nav-link-admin">Admin Panel</a>' : ''}
     <div id="nav-auth-controls" style="display: flex; gap: 0.5rem; align-items: center;">
@@ -300,6 +324,12 @@ function updateNavState() {
     e.preventDefault();
     closeMobileMenu();
     navigateTo("#home");
+  });
+
+  document.getElementById("nav-link-calculator")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    closeMobileMenu();
+    navigateTo("#calculator");
   });
 
   document.getElementById("nav-link-dashboard")?.addEventListener("click", (e) => {
@@ -440,11 +470,14 @@ function handleRoute() {
 
   // Highlight active nav links
   document.getElementById("nav-link-home")?.classList.toggle("active", hash === "#home");
+  document.getElementById("nav-link-calculator")?.classList.toggle("active", hash === "#calculator" || hash === "#roi-calculator");
   document.getElementById("nav-link-dashboard")?.classList.toggle("active", hash === "#dashboard");
   document.getElementById("nav-link-admin")?.classList.toggle("active", hash === "#admin" || hash === "#admin-raffle");
 
   if (hash === "#admin" || hash === "#admin-raffle") {
     showAdminRaffleView();
+  } else if (hash === "#calculator" || hash === "#roi-calculator") {
+    showRoiCalculatorView();
   } else if (hash === "#admin-login") {
     // Deprecated separate admin route: redirect to unified login
     if (isAdminLoggedIn()) {

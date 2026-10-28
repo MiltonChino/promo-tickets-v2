@@ -317,6 +317,33 @@ function setupDashboardEvents(container, onShowNotification) {
     if (cancelEditBtn) cancelEditBtn.classList.add("hidden");
   }
 
+  // Check if user arrived with pre-filled scope from the ROI Calculator
+  try {
+    const roiPrefill = sessionStorage.getItem("devconsult_roi_prefill");
+    if (roiPrefill) {
+      const data = JSON.parse(roiPrefill);
+      sessionStorage.removeItem("devconsult_roi_prefill");
+
+      const titleInput = container.querySelector("#ticket-title");
+      const techInput = container.querySelector("#ticket-tech-stack");
+      const urgencyInput = container.querySelector("#ticket-urgency");
+      const budgetInput = container.querySelector("#ticket-budget");
+      const descInput = container.querySelector("#ticket-description");
+
+      if (titleInput && data.project_title) titleInput.value = data.project_title;
+      if (techInput && data.tech_stack) techInput.value = data.tech_stack;
+      if (urgencyInput && data.urgency) urgencyInput.value = data.urgency;
+      if (budgetInput && data.budget_range) budgetInput.value = data.budget_range;
+      if (descInput && data.project_description) descInput.value = data.project_description;
+
+      if (onShowNotification) {
+        onShowNotification("ROI Calculator scope loaded into ticket form! 🎉", "success");
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load ROI prefill:", err);
+  }
+
   if (refreshBtn) {
     refreshBtn.addEventListener("click", () => {
       loadUserTickets(container, onShowNotification);
