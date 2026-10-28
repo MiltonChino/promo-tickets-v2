@@ -186,21 +186,34 @@ async function loadAdminTickets(container, onShowNotification) {
 
 function renderAdminTicketCard(ticket) {
   const status = (ticket.status || "pending").toLowerCase();
-  const badgeClass = status === "won" ? "badge-won" : "badge-pending";
-  const statusLabel = status === "won" ? "Selected Winner 🎉" : "Pending";
+  const badgeClass = status === "won" ? "badge-won" : status === "closed" ? "badge-closed" : "badge-pending";
+  const statusLabel = status === "won" ? "Selected Winner 🎉" : status === "closed" ? "Closed 🔒" : "Pending";
   const dateStr = ticket.created_at
     ? new Date(ticket.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
     : "Recently";
+
+  const urgency = (ticket.urgency || "medium").toLowerCase();
+  const urgencyLabel = urgency === "urgent" ? "🔥 Urgent" : urgency === "low" ? "🟢 Low" : "⚡ Medium";
+  const urgencyClass = urgency === "urgent" ? "badge-urgent" : urgency === "low" ? "badge-low" : "badge-medium";
 
   return `
     <div class="ticket-card ${status}">
       <div class="ticket-card-header">
         <h4 class="ticket-title">${escapeHtml(ticket.project_title || "Untitled Project")}</h4>
-        <span class="status-pill ${badgeClass}">
-          ${status === "won" ? "🏆" : "⏳"} ${statusLabel}
-        </span>
+        <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+          <span class="status-pill ${urgencyClass}">${urgencyLabel}</span>
+          <span class="status-pill ${badgeClass}">
+            ${status === "won" ? "🏆" : status === "closed" ? "🔒" : "⏳"} ${statusLabel}
+          </span>
+        </div>
       </div>
       <p class="ticket-description">${escapeHtml(ticket.project_description || "")}</p>
+      ${ticket.tech_stack ? `
+        <div class="ticket-tech-stack" style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+          <span>🛠️</span>
+          <span><strong>Stack:</strong> <code>${escapeHtml(ticket.tech_stack)}</code></span>
+        </div>
+      ` : ''}
       <div class="ticket-meta">
         <span class="ticket-meta-item">🆔 Ticket #${ticket.id || "N/A"}</span>
         <span class="ticket-meta-item">💵 Budget: <strong>${escapeHtml(ticket.budget_range || "N/A")}</strong></span>
@@ -294,6 +307,8 @@ function setupAdminEvents(container, onShowNotification) {
                 <span>🎫 <strong>Ticket ID:</strong> #${winner.id}</span>
                 <span>👤 <strong>Client:</strong> ${escapeHtml(winner.user_name || "Client User")} ${winner.user_email ? `(${escapeHtml(winner.user_email)})` : ""}</span>
                 <span>💵 <strong>Budget:</strong> ${escapeHtml(winner.budget_range || "N/A")}</span>
+                ${winner.tech_stack ? `<span>🛠️ <strong>Stack:</strong> ${escapeHtml(winner.tech_stack)}</span>` : ''}
+                ${winner.urgency ? `<span>⏱️ <strong>Urgency:</strong> ${escapeHtml(winner.urgency.toUpperCase())}</span>` : ''}
               </div>
               
               <div class="winner-banner-footer">

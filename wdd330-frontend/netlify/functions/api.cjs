@@ -345,7 +345,7 @@ app.get(["/tickets", "/api/tickets"], handleGetTickets);
 // POST /api/tickets: Derives user_id from verified JWT claims
 const handlePostTicket = (req, res) => {
   const claims = req.claims;
-  const { project_title, project_description, budget_range } = req.body;
+  const { project_title, project_description, budget_range, tech_stack, urgency } = req.body;
 
   if (!project_title || !project_description) {
     return res.status(400).json({ status: 400, message: "Project title and description are required" });
@@ -360,6 +360,8 @@ const handlePostTicket = (req, res) => {
     project_title: String(project_title).trim(),
     project_description: String(project_description).trim(),
     budget_range: budget_range || "$5k - $10k",
+    tech_stack: tech_stack ? String(tech_stack).trim() : "",
+    urgency: urgency ? String(urgency).toLowerCase() : "medium",
     status: "pending",
     created_at: Date.now()
   };

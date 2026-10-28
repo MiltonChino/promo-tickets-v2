@@ -68,6 +68,34 @@ export function renderDashboard(targetElement, onShowNotification) {
             </div>
 
             <div class="form-group">
+              <label for="ticket-tech-stack" class="form-label">Tech Stack & Frameworks</label>
+              <div class="input-wrapper">
+                <span class="input-icon">🛠️</span>
+                <input 
+                  type="text" 
+                  id="ticket-tech-stack" 
+                  name="tech_stack" 
+                  class="form-input" 
+                  placeholder="e.g. Node.js, React, PostgreSQL, Docker" 
+                  required
+                />
+              </div>
+              <span class="field-error" id="error-ticket-tech-stack"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="ticket-urgency" class="form-label">Consultation Urgency</label>
+              <div class="input-wrapper">
+                <span class="input-icon">⏱️</span>
+                <select id="ticket-urgency" name="urgency" class="form-input form-select">
+                  <option value="urgent">🔥 Urgent (Needs immediate attention / ASAP)</option>
+                  <option value="medium" selected>⚡ Medium (Review within 1 month)</option>
+                  <option value="low">🟢 Low (Flexible roadmap / Within 3 months)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
               <label for="ticket-description" class="form-label">Project Description & Needs</label>
               <textarea 
                 id="ticket-description" 
@@ -182,6 +210,10 @@ function renderTicketCard(ticket) {
     statusIcon = "🔒";
   }
 
+  const urgency = (ticket.urgency || "medium").toLowerCase();
+  const urgencyLabel = urgency === "urgent" ? "🔥 Urgent" : urgency === "low" ? "🟢 Low" : "⚡ Medium";
+  const urgencyClass = urgency === "urgent" ? "badge-urgent" : urgency === "low" ? "badge-low" : "badge-medium";
+
   const dateStr = ticket.created_at 
     ? new Date(ticket.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : "Recently";
@@ -190,12 +222,22 @@ function renderTicketCard(ticket) {
     <div class="ticket-card ${status}">
       <div class="ticket-card-header">
         <h4 class="ticket-title">${escapeHtml(ticket.project_title || "Untitled Project")}</h4>
-        <span class="status-pill ${statusBadgeClass}">
-          ${statusIcon} ${statusLabel}
-        </span>
+        <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+          <span class="status-pill ${urgencyClass}">${urgencyLabel}</span>
+          <span class="status-pill ${statusBadgeClass}">
+            ${statusIcon} ${statusLabel}
+          </span>
+        </div>
       </div>
       
       <p class="ticket-description">${escapeHtml(ticket.project_description || "")}</p>
+
+      ${ticket.tech_stack ? `
+        <div class="ticket-tech-stack" style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+          <span>🛠️</span>
+          <span><strong>Stack:</strong> <code>${escapeHtml(ticket.tech_stack)}</code></span>
+        </div>
+      ` : ''}
       
       <div class="ticket-meta">
         <span class="ticket-meta-item">💵 Budget: <strong>${escapeHtml(ticket.budget_range || "N/A")}</strong></span>
@@ -221,6 +263,8 @@ function setupDashboardEvents(container, onShowNotification) {
       e.preventDefault();
 
       const titleInput = container.querySelector("#ticket-title");
+      const techInput = container.querySelector("#ticket-tech-stack");
+      const urgencyInput = container.querySelector("#ticket-urgency");
       const budgetInput = container.querySelector("#ticket-budget");
       const descInput = container.querySelector("#ticket-description");
       const submitBtn = container.querySelector("#btn-submit-ticket-form");
@@ -228,15 +272,20 @@ function setupDashboardEvents(container, onShowNotification) {
       const btnSpinner = submitBtn.querySelector(".btn-spinner");
 
       const errorTitle = container.querySelector("#error-ticket-title");
+      const errorTech = container.querySelector("#error-ticket-tech-stack");
       const errorDesc = container.querySelector("#error-ticket-description");
 
       // Reset errors
       if (errorTitle) errorTitle.textContent = "";
+      if (errorTech) errorTech.textContent = "";
       if (errorDesc) errorDesc.textContent = "";
       titleInput.classList.remove("input-error");
+      techInput?.classList.remove("input-error");
       descInput.classList.remove("input-error");
 
       const title = titleInput.value.trim();
+      const techStack = techInput ? techInput.value.trim() : "";
+      const urgency = urgencyInput ? urgencyInput.value : "medium";
       const budget = budgetInput.value;
       const description = descInput.value.trim();
 
@@ -245,6 +294,12 @@ function setupDashboardEvents(container, onShowNotification) {
       if (!title) {
         if (errorTitle) errorTitle.textContent = "Project title is required.";
         titleInput.classList.add("input-error");
+        hasError = true;
+      }
+
+      if (!techStack) {
+        if (errorTech) errorTech.textContent = "Tech stack is required.";
+        techInput?.classList.add("input-error");
         hasError = true;
       }
 
@@ -264,6 +319,8 @@ function setupDashboardEvents(container, onShowNotification) {
       try {
         await createTicket({
           project_title: title,
+          tech_stack: techStack,
+          urgency: urgency,
           project_description: description,
           budget_range: budget,
           status: "pending"
@@ -271,6 +328,7 @@ function setupDashboardEvents(container, onShowNotification) {
 
         // Reset form inputs
         titleInput.value = "";
+        if (techInput) techInput.value = "";
         descInput.value = "";
 
         if (onShowNotification) {
