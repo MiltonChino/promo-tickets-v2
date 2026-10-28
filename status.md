@@ -136,4 +136,5 @@ ADMIN_NAME=Administrator
 - [x] **Tech Stack & Urgency Fields:** Added `tech_stack` and `urgency` (Urgent, Medium, Low) fields across client ticket creation, backend storage, dashboard cards, and admin spotlight.
 - [x] **Ticket Lifecycle Management:** Added full client edit and delete for pending tickets, admin status toggling (`closed`, `pending`, `won`), and three-column admin dashboard with dedicated closed ticket pool.
 - [x] **External Database Adapter for Netlify Serverless (Reversible):** Added `dbAdapter.cjs` supporting PostgreSQL (`pg`) with automatic table creation/seeding, and transparent fallback to local memory store when `DATABASE_URL` is omitted.
+- [x] **Software ROI & Impact Calculator Page:** Added dedicated interactive `#calculator` view with scenario presets (Startup, Mid-Market, E-Commerce), real-time financial modeling (labor savings, revenue boost, payback period, 3-year value), and direct prefill transfer into consultation ticket submissions.
 - [ ] **Tailwind Migration (Optional):** If required by course syllabus, replace custom Vanilla CSS with Tailwind CSS.

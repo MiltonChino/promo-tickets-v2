@@ -62,6 +62,22 @@ The codebase features a modern single-page application (SPA) frontend, dual back
 - **External PostgreSQL Support:** The serverless function utilizes [`dbAdapter.cjs`](wdd330-frontend/netlify/functions/dbAdapter.cjs) via `pg` connection pooling. When `DATABASE_URL` is configured, it auto-initializes relational tables (`users`, `tickets`) and persists data across serverless cold starts.
 - **Reversible Local Fallback:** If `DATABASE_URL` is omitted or temporarily unreachable, the app seamlessly falls back to local in-memory storage with zero runtime crashes.
 
+### 7. Interactive Software ROI & Business Impact Calculator
+- **Real-Time Financial Modeling:** A dedicated `#calculator` page allows prospective clients to discover their projected Return on Investment before submitting a consultation ticket.
+- **Dynamic Parameters:**
+  - Affected team size (1-50 people).
+  - Hourly labor rate ($20-$150/hr).
+  - Manual hours lost weekly per employee (1-25 hrs/wk).
+  - Current annual revenue and target automation efficiency (20%-90%).
+  - Estimated software investment tier ($1k-$5k, $5k-$10k, $10k-$20k, $20k+).
+- **Comprehensive Projections:**
+  - 1st-Year Projected Net ROI (%) & Break-even payback period (months).
+  - Annual labor cost saved & productivity hours reclaimed.
+  - Revenue growth boost & 3-year cumulative net return.
+  - Visual investment-to-value ratio bar.
+- **Industry Scenario Presets:** One-click presets for *Lean Startup*, *Mid-Market*, and *E-Commerce & Logistics*.
+- **Direct Lottery Integration:** Clicking *"Enter Raffle Pool with this Scope"* transfers the calculated budget, staff scale, and ROI projection directly into the consultation submission form.
+
 ---
 
 ## 🏗️ Architecture & Tech Stack
@@ -110,6 +126,7 @@ promo-tickets-v2/
         ├── authForm.js                # Unified Login & Register modal dialogs
         ├── dashboard.js               # Client consultation ticket submission & management
         ├── adminRaffle.js             # Admin lottery draw engine & pool metrics
+        ├── roiCalculator.js           # Interactive software ROI & business impact modeler
         └── api.js                     # Centralized client-side fetch service
 ```
 
@@ -223,6 +240,11 @@ All endpoints are prefixed with `/api` (or accessed directly under Netlify funct
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/login` | Public | Unified sign-in for clients and administrators. Returns JWT. |
 | `POST` | `/api/register` | Public | Client registration. Returns JWT and client profile. |
+
+### Business Modeling & ROI
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/roi` | Public | Computes labor savings, revenue growth, net first-year profit, and ROI % from company inputs. |
 
 ### Consultation Tickets
 | Method | Endpoint | Access | Description |
