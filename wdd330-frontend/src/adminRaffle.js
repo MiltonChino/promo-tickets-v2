@@ -4,7 +4,7 @@
  * handles edge cases when the pool is empty, and displays past winners.
  */
 
-import { fetchTickets, drawRaffleWinner, resetRafflePool } from "./api.js";
+import { fetchTickets, drawRaffleWinner, resetRafflePool, updateTicket, deleteTicket } from "./api.js";
 
 export function renderAdminRaffle(targetElement, onShowNotification) {
   targetElement.innerHTML = `
@@ -42,6 +42,14 @@ export function renderAdminRaffle(targetElement, onShowNotification) {
           <div class="metric-data">
             <span class="metric-value" id="metric-won-count">-</span>
             <span class="metric-label">Awarded Winners</span>
+          </div>
+        </div>
+
+        <div class="metric-card metric-closed">
+          <div class="metric-icon">🔒</div>
+          <div class="metric-data">
+            <span class="metric-value" id="metric-closed-count">-</span>
+            <span class="metric-label">Closed / Archived</span>
           </div>
         </div>
 
@@ -106,6 +114,20 @@ export function renderAdminRaffle(targetElement, onShowNotification) {
             </div>
           </div>
         </div>
+
+        <!-- Closed / Archived Tickets -->
+        <div class="card admin-list-card">
+          <div class="card-header">
+            <h3 class="card-title">🔒 Closed Tickets</h3>
+            <span class="badge-closed" id="badge-closed-list">0 Closed</span>
+          </div>
+          <div class="tickets-list" id="admin-closed-list">
+            <div class="loader-container">
+              <div class="loader"></div>
+              <p>Loading closed tickets...</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -120,24 +142,30 @@ export function renderAdminRaffle(targetElement, onShowNotification) {
 async function loadAdminTickets(container, onShowNotification) {
   const pendingDisplay = container.querySelector("#admin-pending-list");
   const wonDisplay = container.querySelector("#admin-won-list");
+  const closedDisplay = container.querySelector("#admin-closed-list");
   const pendingCountVal = container.querySelector("#metric-pending-count");
   const wonCountVal = container.querySelector("#metric-won-count");
+  const closedCountVal = container.querySelector("#metric-closed-count");
   const totalCountVal = container.querySelector("#metric-total-count");
   const badgePending = container.querySelector("#badge-pending-list");
   const badgeWon = container.querySelector("#badge-won-list");
+  const badgeClosed = container.querySelector("#badge-closed-list");
 
   try {
     const tickets = await fetchTickets();
     const pendingTickets = tickets.filter((t) => (t.status || "pending").toLowerCase() === "pending");
     const wonTickets = tickets.filter((t) => (t.status || "").toLowerCase() === "won");
+    const closedTickets = tickets.filter((t) => (t.status || "").toLowerCase() === "closed");
 
     // Update metrics
     if (pendingCountVal) pendingCountVal.textContent = pendingTickets.length;
     if (wonCountVal) wonCountVal.textContent = wonTickets.length;
+    if (closedCountVal) closedCountVal.textContent = closedTickets.length;
     if (totalCountVal) totalCountVal.textContent = tickets.length;
 
     if (badgePending) badgePending.textContent = `${pendingTickets.length} Pending`;
     if (badgeWon) badgeWon.textContent = `${wonTickets.length} Winner${wonTickets.length === 1 ? "" : "s"}`;
+    if (badgeClosed) badgeClosed.textContent = `${closedTickets.length} Closed`;
 
     // Render Pending List
     if (pendingTickets.length === 0) {
@@ -145,7 +173,7 @@ async function loadAdminTickets(container, onShowNotification) {
         <div class="empty-tickets-card">
           <div class="empty-icon">📭</div>
           <h4>No Pending Tickets in Pool</h4>
-          <p>All tickets have been drawn or no tickets have been submitted yet.</p>
+          <p>All tickets have been drawn, closed, or no tickets have been submitted yet.</p>
         </div>
       `;
     } else {
@@ -154,17 +182,35 @@ async function loadAdminTickets(container, onShowNotification) {
     }
 
     // Render Won List
-    if (wonTickets.length === 0) {
-      wonDisplay.innerHTML = `
-        <div class="empty-tickets-card">
-          <div class="empty-icon">🎖️</div>
-          <h4>No Winners Awarded Yet</h4>
-          <p>Click "DRAW A WINNER" above to pick a lucky project for free consultation!</p>
-        </div>
-      `;
-    } else {
-      wonTickets.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-      wonDisplay.innerHTML = wonTickets.map((t) => renderAdminTicketCard(t)).join("");
+    if (wonDisplay) {
+      if (wonTickets.length === 0) {
+        wonDisplay.innerHTML = `
+          <div class="empty-tickets-card">
+            <div class="empty-icon">🎖️</div>
+            <h4>No Winners Awarded Yet</h4>
+            <p>Click "DRAW A WINNER" above to pick a lucky project for free consultation!</p>
+          </div>
+        `;
+      } else {
+        wonTickets.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+        wonDisplay.innerHTML = wonTickets.map((t) => renderAdminTicketCard(t)).join("");
+      }
+    }
+
+    // Render Closed List
+    if (closedDisplay) {
+      if (closedTickets.length === 0) {
+        closedDisplay.innerHTML = `
+          <div class="empty-tickets-card">
+            <div class="empty-icon">📁</div>
+            <h4>No Closed Tickets</h4>
+            <p>Tickets marked as closed or archived will appear here.</p>
+          </div>
+        `;
+      } else {
+        closedTickets.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+        closedDisplay.innerHTML = closedTickets.map((t) => renderAdminTicketCard(t)).join("");
+      }
     }
 
   } catch (err) {
@@ -219,6 +265,31 @@ function renderAdminTicketCard(ticket) {
         <span class="ticket-meta-item">💵 Budget: <strong>${escapeHtml(ticket.budget_range || "N/A")}</strong></span>
         <span class="ticket-meta-item">📅 ${dateStr}</span>
       </div>
+
+      <div class="ticket-actions">
+        ${status === "pending" ? `
+          <button type="button" class="btn btn-sm btn-outline-secondary btn-admin-status-ticket" data-id="${ticket.id}" data-status="closed">
+            🔒 Mark Closed
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-admin-delete-ticket" data-id="${ticket.id}">
+            🗑️ Delete
+          </button>
+        ` : status === "closed" ? `
+          <button type="button" class="btn btn-sm btn-outline btn-admin-status-ticket" data-id="${ticket.id}" data-status="pending">
+            ⏳ Reopen
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-admin-delete-ticket" data-id="${ticket.id}">
+            🗑️ Delete
+          </button>
+        ` : `
+          <button type="button" class="btn btn-sm btn-outline-secondary btn-admin-status-ticket" data-id="${ticket.id}" data-status="pending">
+            ⏳ Reset to Pending
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-admin-delete-ticket" data-id="${ticket.id}">
+            🗑️ Delete
+          </button>
+        `}
+      </div>
     </div>
   `;
 }
@@ -229,6 +300,52 @@ function setupAdminEvents(container, onShowNotification) {
   const resetBtn = container.querySelector("#btn-reset-raffle");
   const spotlight = container.querySelector("#winner-spotlight-container");
   const alertBanner = container.querySelector("#admin-alert-banner");
+
+  // Admin Ticket Status and Delete Action Delegation
+  container.addEventListener("click", async (e) => {
+    const statusBtn = e.target.closest(".btn-admin-status-ticket");
+    const deleteBtn = e.target.closest(".btn-admin-delete-ticket");
+
+    if (statusBtn) {
+      const id = statusBtn.dataset.id;
+      const newStatus = statusBtn.dataset.status;
+      statusBtn.disabled = true;
+      try {
+        await updateTicket(id, { status: newStatus });
+        if (onShowNotification) {
+          onShowNotification(`Ticket #${id} status changed to ${newStatus}.`, "success");
+        }
+        await loadAdminTickets(container, onShowNotification);
+      } catch (err) {
+        console.error("Failed to update ticket status:", err);
+        if (onShowNotification) {
+          onShowNotification(err.message || "Failed to update ticket status.", "error");
+        }
+        statusBtn.disabled = false;
+      }
+    }
+
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      if (!window.confirm(`Are you sure you want to permanently delete ticket #${id}?`)) {
+        return;
+      }
+      deleteBtn.disabled = true;
+      try {
+        await deleteTicket(id);
+        if (onShowNotification) {
+          onShowNotification(`Ticket #${id} permanently deleted.`, "info");
+        }
+        await loadAdminTickets(container, onShowNotification);
+      } catch (err) {
+        console.error("Failed to delete ticket:", err);
+        if (onShowNotification) {
+          onShowNotification(err.message || "Failed to delete ticket.", "error");
+        }
+        deleteBtn.disabled = false;
+      }
+    }
+  });
 
   if (refreshBtn) {
     refreshBtn.addEventListener("click", () => {

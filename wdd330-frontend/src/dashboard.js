@@ -3,8 +3,11 @@
  * Renders ticket submission form and live user tickets list.
  */
 
-import { fetchTickets, createTicket } from "./api.js";
+import { fetchTickets, createTicket, updateTicket, deleteTicket } from "./api.js";
 import { getUser } from "./auth.js";
+
+let currentTickets = [];
+let editingTicketId = null;
 
 export function renderDashboard(targetElement, onShowNotification) {
   const currentUser = getUser() || { name: "Client User", email: "" };
@@ -30,8 +33,8 @@ export function renderDashboard(targetElement, onShowNotification) {
         <!-- LEFT COLUMN: Ticket Submission Form -->
         <div class="card dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">🎟️ Submit Consultation Ticket</h3>
-            <span class="badge-accent">Raffle Entry</span>
+            <h3 class="card-title" id="form-ticket-title">🎟️ Submit Consultation Ticket</h3>
+            <span class="badge-accent" id="form-mode-badge">Raffle Entry</span>
           </div>
           <p class="card-description">
             Describe your software project, architecture challenges, or code review requirements.
@@ -112,6 +115,10 @@ export function renderDashboard(targetElement, onShowNotification) {
               <span class="btn-text">Submit Ticket to Raffle Pool</span>
               <span class="btn-spinner hidden"></span>
             </button>
+
+            <button type="button" class="btn btn-outline-secondary btn-block hidden" id="btn-cancel-edit-ticket" style="margin-top: 0.65rem;">
+              ✖️ Cancel Editing
+            </button>
           </form>
         </div>
 
@@ -159,6 +166,8 @@ async function loadUserTickets(container, onShowNotification) {
       userTickets = allTickets.filter(t => t.user_id === currentUser.id || t.userId === currentUser.email || t.user_id === currentUser.email);
     }
 
+    currentTickets = userTickets;
+
     if (countBadge) {
       countBadge.textContent = `${userTickets.length} Ticket${userTickets.length === 1 ? '' : 's'}`;
     }
@@ -196,6 +205,8 @@ async function loadUserTickets(container, onShowNotification) {
 
 function renderTicketCard(ticket) {
   const status = (ticket.status || "pending").toLowerCase();
+  const isPending = status === "pending";
+
   let statusBadgeClass = "badge-pending";
   let statusLabel = "Pending Draw";
   let statusIcon = "⏳";
@@ -240,8 +251,24 @@ function renderTicketCard(ticket) {
       ` : ''}
       
       <div class="ticket-meta">
+        <span class="ticket-meta-item">🆔 Ticket #${ticket.id || "N/A"}</span>
         <span class="ticket-meta-item">💵 Budget: <strong>${escapeHtml(ticket.budget_range || "N/A")}</strong></span>
         <span class="ticket-meta-item">📅 Submitted: ${dateStr}</span>
+      </div>
+
+      <div class="ticket-actions">
+        ${isPending ? `
+          <button type="button" class="btn btn-sm btn-outline btn-edit-ticket" data-id="${ticket.id}">
+            ✏️ Edit
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-delete-ticket" data-id="${ticket.id}">
+            🗑️ Delete
+          </button>
+        ` : `
+          <span style="font-size: 0.8rem; color: var(--text-muted);">
+            ${status === "won" ? "🎉 Consultation awarded" : "🔒 Consultation closed"}
+          </span>
+        `}
       </div>
     </div>
   `;
@@ -250,11 +277,121 @@ function renderTicketCard(ticket) {
 function setupDashboardEvents(container, onShowNotification) {
   const form = container.querySelector("#form-submit-ticket");
   const refreshBtn = container.querySelector("#btn-refresh-tickets");
+  const display = container.querySelector("#tickets-list-display");
+  const cancelEditBtn = container.querySelector("#btn-cancel-edit-ticket");
+
+  function resetFormToCreate() {
+    editingTicketId = null;
+    const titleInput = container.querySelector("#ticket-title");
+    const techInput = container.querySelector("#ticket-tech-stack");
+    const urgencyInput = container.querySelector("#ticket-urgency");
+    const budgetInput = container.querySelector("#ticket-budget");
+    const descInput = container.querySelector("#ticket-description");
+
+    if (titleInput) {
+      titleInput.value = "";
+      titleInput.classList.remove("input-error");
+    }
+    if (techInput) {
+      techInput.value = "";
+      techInput.classList.remove("input-error");
+    }
+    if (urgencyInput) urgencyInput.value = "medium";
+    if (budgetInput) budgetInput.value = "$5k - $10k";
+    if (descInput) {
+      descInput.value = "";
+      descInput.classList.remove("input-error");
+    }
+
+    const formTitle = container.querySelector("#form-ticket-title");
+    const modeBadge = container.querySelector("#form-mode-badge");
+    const submitBtn = container.querySelector("#btn-submit-ticket-form");
+    const submitBtnText = submitBtn?.querySelector(".btn-text");
+
+    if (formTitle) formTitle.textContent = "🎟️ Submit Consultation Ticket";
+    if (modeBadge) {
+      modeBadge.textContent = "Raffle Entry";
+      modeBadge.className = "badge-accent";
+    }
+    if (submitBtnText) submitBtnText.textContent = "Submit Ticket to Raffle Pool";
+    if (cancelEditBtn) cancelEditBtn.classList.add("hidden");
+  }
 
   if (refreshBtn) {
     refreshBtn.addEventListener("click", () => {
       loadUserTickets(container, onShowNotification);
       if (onShowNotification) onShowNotification("Tickets list refreshed!", "info");
+    });
+  }
+
+  if (cancelEditBtn) {
+    cancelEditBtn.addEventListener("click", () => {
+      resetFormToCreate();
+      if (onShowNotification) onShowNotification("Ticket edit cancelled.", "info");
+    });
+  }
+
+  // Handle Edit and Delete button clicks on tickets
+  if (display) {
+    display.addEventListener("click", async (e) => {
+      const editBtn = e.target.closest(".btn-edit-ticket");
+      const deleteBtn = e.target.closest(".btn-delete-ticket");
+
+      if (editBtn) {
+        const id = editBtn.dataset.id;
+        const ticket = currentTickets.find(t => String(t.id) === String(id));
+        if (!ticket) return;
+
+        editingTicketId = ticket.id;
+
+        const titleInput = container.querySelector("#ticket-title");
+        const techInput = container.querySelector("#ticket-tech-stack");
+        const urgencyInput = container.querySelector("#ticket-urgency");
+        const budgetInput = container.querySelector("#ticket-budget");
+        const descInput = container.querySelector("#ticket-description");
+
+        if (titleInput) titleInput.value = ticket.project_title || "";
+        if (techInput) techInput.value = ticket.tech_stack || "";
+        if (urgencyInput) urgencyInput.value = (ticket.urgency || "medium").toLowerCase();
+        if (budgetInput) budgetInput.value = ticket.budget_range || "$5k - $10k";
+        if (descInput) descInput.value = ticket.project_description || "";
+
+        const formTitle = container.querySelector("#form-ticket-title");
+        const modeBadge = container.querySelector("#form-mode-badge");
+        const submitBtn = container.querySelector("#btn-submit-ticket-form");
+        const submitBtnText = submitBtn?.querySelector(".btn-text");
+
+        if (formTitle) formTitle.textContent = `✏️ Edit Consultation Ticket #${ticket.id}`;
+        if (modeBadge) {
+          modeBadge.textContent = "Editing Mode";
+          modeBadge.className = "badge-urgent";
+        }
+        if (submitBtnText) submitBtnText.textContent = "Save Ticket Changes";
+        if (cancelEditBtn) cancelEditBtn.classList.remove("hidden");
+
+        form?.scrollIntoView({ behavior: "smooth" });
+      }
+
+      if (deleteBtn) {
+        const id = deleteBtn.dataset.id;
+        if (!window.confirm(`Are you sure you want to delete consultation ticket #${id}? This action cannot be undone.`)) {
+          return;
+        }
+
+        deleteBtn.disabled = true;
+        try {
+          await deleteTicket(id);
+          if (onShowNotification) onShowNotification(`Ticket #${id} deleted successfully.`, "info");
+          if (editingTicketId && String(editingTicketId) === String(id)) {
+            resetFormToCreate();
+          }
+          await loadUserTickets(container, onShowNotification);
+        } catch (err) {
+          console.error("Failed to delete ticket:", err);
+          if (onShowNotification) onShowNotification(err.message || "Failed to delete ticket.", "error");
+          deleteBtn.disabled = false;
+        }
+      }
     });
   }
 
@@ -311,37 +448,47 @@ function setupDashboardEvents(container, onShowNotification) {
 
       if (hasError) return;
 
-      // Submit ticket
       submitBtn.disabled = true;
       if (btnText) btnText.style.opacity = "0.5";
       if (btnSpinner) btnSpinner.classList.remove("hidden");
 
       try {
-        await createTicket({
-          project_title: title,
-          tech_stack: techStack,
-          urgency: urgency,
-          project_description: description,
-          budget_range: budget,
-          status: "pending"
-        });
+        if (editingTicketId) {
+          await updateTicket(editingTicketId, {
+            project_title: title,
+            tech_stack: techStack,
+            urgency: urgency,
+            project_description: description,
+            budget_range: budget
+          });
 
-        // Reset form inputs
-        titleInput.value = "";
-        if (techInput) techInput.value = "";
-        descInput.value = "";
+          if (onShowNotification) {
+            onShowNotification(`Ticket #${editingTicketId} updated successfully! ✍️`, "success");
+          }
+          resetFormToCreate();
+        } else {
+          await createTicket({
+            project_title: title,
+            tech_stack: techStack,
+            urgency: urgency,
+            project_description: description,
+            budget_range: budget,
+            status: "pending"
+          });
 
-        if (onShowNotification) {
-          onShowNotification("Ticket successfully submitted to the raffle pool! 🎉", "success");
+          resetFormToCreate();
+          if (onShowNotification) {
+            onShowNotification("Ticket successfully submitted to the raffle pool! 🎉", "success");
+          }
         }
 
         // Reload tickets list
         await loadUserTickets(container, onShowNotification);
 
       } catch (err) {
-        console.error("Failed to submit ticket:", err);
+        console.error("Failed to save ticket:", err);
         if (onShowNotification) {
-          onShowNotification(err.message || "Failed to submit ticket.", "error");
+          onShowNotification(err.message || "Failed to save ticket.", "error");
         }
       } finally {
         submitBtn.disabled = false;

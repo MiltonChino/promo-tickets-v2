@@ -372,5 +372,76 @@ const handlePostTicket = (req, res) => {
 
 app.post(["/tickets", "/api/tickets"], handlePostTicket);
 
+// PUT /api/tickets/:id: Edit consultation ticket (Client pending only, or Admin)
+const handlePutTicket = (req, res) => {
+  const claims = req.claims;
+  const ticketId = Number(req.params.id) || req.params.id;
+  const ticketIndex = ticketsStore.findIndex((t) => t.id === ticketId || String(t.id) === String(ticketId));
+
+  if (ticketIndex === -1) {
+    return res.status(404).json({ status: 404, message: "Ticket not found" });
+  }
+
+  const ticket = ticketsStore[ticketIndex];
+  const isAdmin = claims && claims.role === "admin";
+  const user = usersStore.find((u) => u.email === claims.email || u.id === claims.id);
+  const userId = user ? user.id : claims.id;
+
+  if (!isAdmin) {
+    if (ticket.user_id !== userId) {
+      return res.status(403).json({ status: 403, message: "Forbidden: You cannot modify tickets belonging to other clients" });
+    }
+    if ((ticket.status || "pending").toLowerCase() !== "pending") {
+      return res.status(400).json({ status: 400, message: "Cannot edit tickets that are already closed or awarded" });
+    }
+  }
+
+  const { project_title, project_description, budget_range, tech_stack, urgency, status } = req.body;
+  if (project_title !== undefined) ticket.project_title = String(project_title).trim();
+  if (project_description !== undefined) ticket.project_description = String(project_description).trim();
+  if (budget_range !== undefined) ticket.budget_range = budget_range;
+  if (tech_stack !== undefined) ticket.tech_stack = String(tech_stack).trim();
+  if (urgency !== undefined) ticket.urgency = String(urgency).toLowerCase();
+
+  if (isAdmin && status !== undefined) {
+    ticket.status = String(status).toLowerCase();
+  }
+
+  ticket.updated_at = Date.now();
+  ticketsStore[ticketIndex] = ticket;
+  return res.status(200).json(ticket);
+};
+
+// DELETE /api/tickets/:id: Delete consultation ticket (Client pending only, or Admin)
+const handleDeleteTicket = (req, res) => {
+  const claims = req.claims;
+  const ticketId = Number(req.params.id) || req.params.id;
+  const ticketIndex = ticketsStore.findIndex((t) => t.id === ticketId || String(t.id) === String(ticketId));
+
+  if (ticketIndex === -1) {
+    return res.status(404).json({ status: 404, message: "Ticket not found" });
+  }
+
+  const ticket = ticketsStore[ticketIndex];
+  const isAdmin = claims && claims.role === "admin";
+  const user = usersStore.find((u) => u.email === claims.email || u.id === claims.id);
+  const userId = user ? user.id : claims.id;
+
+  if (!isAdmin) {
+    if (ticket.user_id !== userId) {
+      return res.status(403).json({ status: 403, message: "Forbidden: You cannot delete tickets belonging to other clients" });
+    }
+    if ((ticket.status || "pending").toLowerCase() !== "pending") {
+      return res.status(400).json({ status: 400, message: "Cannot delete tickets that are already closed or awarded" });
+    }
+  }
+
+  ticketsStore.splice(ticketIndex, 1);
+  return res.status(200).json({ status: "success", message: "Ticket successfully deleted", id: ticketId });
+};
+
+app.put(["/tickets/:id", "/api/tickets/:id"], handlePutTicket);
+app.delete(["/tickets/:id", "/api/tickets/:id"], handleDeleteTicket);
+
 module.exports.app = app;
 module.exports.handler = serverless(app);

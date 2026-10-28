@@ -371,6 +371,80 @@ server.post(["/tickets", "/api/tickets"], (req, res) => {
   return res.status(201).json(newTicket);
 });
 
+// PUT /api/tickets/:id: Edit consultation ticket (Client pending only, or Admin)
+server.put(["/tickets/:id", "/api/tickets/:id"], (req, res) => {
+  const claims = req.claims;
+  const ticketId = Number(req.params.id) || req.params.id;
+  const ticket = router.db.get("tickets").find((t) => t.id === ticketId || String(t.id) === String(ticketId)).value();
+
+  if (!ticket) {
+    return res.status(404).json({ status: 404, message: "Ticket not found" });
+  }
+
+  const isAdmin = claims && claims.role === "admin";
+  const user = router.db.get("users").find((u) => u.email === claims.email || u.id === claims.id).value();
+  const userId = user ? user.id : claims.id;
+
+  if (!isAdmin) {
+    if (ticket.user_id !== userId) {
+      return res.status(403).json({ status: 403, message: "Forbidden: You cannot modify tickets belonging to other clients" });
+    }
+    if ((ticket.status || "pending").toLowerCase() !== "pending") {
+      return res.status(400).json({ status: 400, message: "Cannot edit tickets that are already closed or awarded" });
+    }
+  }
+
+  const { project_title, project_description, budget_range, tech_stack, urgency, status } = req.body;
+  const updates = {};
+
+  if (project_title !== undefined) updates.project_title = String(project_title).trim();
+  if (project_description !== undefined) updates.project_description = String(project_description).trim();
+  if (budget_range !== undefined) updates.budget_range = budget_range;
+  if (tech_stack !== undefined) updates.tech_stack = String(tech_stack).trim();
+  if (urgency !== undefined) updates.urgency = String(urgency).toLowerCase();
+
+  if (isAdmin && status !== undefined) {
+    updates.status = String(status).toLowerCase();
+  }
+
+  updates.updated_at = Date.now();
+
+  router.db.get("tickets")
+    .find((t) => t.id === ticketId || String(t.id) === String(ticketId))
+    .assign(updates)
+    .write();
+
+  const updatedTicket = router.db.get("tickets").find((t) => t.id === ticketId || String(t.id) === String(ticketId)).value();
+  return res.status(200).json(updatedTicket);
+});
+
+// DELETE /api/tickets/:id: Delete consultation ticket (Client pending only, or Admin)
+server.delete(["/tickets/:id", "/api/tickets/:id"], (req, res) => {
+  const claims = req.claims;
+  const ticketId = Number(req.params.id) || req.params.id;
+  const ticket = router.db.get("tickets").find((t) => t.id === ticketId || String(t.id) === String(ticketId)).value();
+
+  if (!ticket) {
+    return res.status(404).json({ status: 404, message: "Ticket not found" });
+  }
+
+  const isAdmin = claims && claims.role === "admin";
+  const user = router.db.get("users").find((u) => u.email === claims.email || u.id === claims.id).value();
+  const userId = user ? user.id : claims.id;
+
+  if (!isAdmin) {
+    if (ticket.user_id !== userId) {
+      return res.status(403).json({ status: 403, message: "Forbidden: You cannot delete tickets belonging to other clients" });
+    }
+    if ((ticket.status || "pending").toLowerCase() !== "pending") {
+      return res.status(400).json({ status: 400, message: "Cannot delete tickets that are already closed or awarded" });
+    }
+  }
+
+  router.db.get("tickets").remove((t) => t.id === ticketId || String(t.id) === String(ticketId)).write();
+  return res.status(200).json({ status: "success", message: "Ticket successfully deleted", id: ticketId });
+});
+
 server.use(router);
 
 if (require.main === module) {

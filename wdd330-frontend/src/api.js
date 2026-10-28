@@ -103,3 +103,57 @@ export async function resetRafflePool() {
   return await response.json();
 }
 
+/**
+ * Updates an existing ticket (Client pending only, or Admin).
+ * @param {string|number} ticketId
+ * @param {Object} ticketData
+ */
+export async function updateTicket(ticketId, ticketData) {
+  const token = getToken();
+  if (!token) {
+    throw new Error("You must be logged in to update a ticket.");
+  }
+
+  const response = await fetch(`/api/tickets/${ticketId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(ticketData)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Failed to update ticket (${response.status})`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Deletes a ticket (Client pending only, or Admin).
+ * @param {string|number} ticketId
+ */
+export async function deleteTicket(ticketId) {
+  const token = getToken();
+  if (!token) {
+    throw new Error("You must be logged in to delete a ticket.");
+  }
+
+  const response = await fetch(`/api/tickets/${ticketId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Failed to delete ticket (${response.status})`);
+  }
+
+  return await response.json();
+}
+
