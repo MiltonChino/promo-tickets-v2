@@ -130,5 +130,8 @@ ADMIN_NAME=Administrator
 - [x] **Remove Quick Admin Login Buttons:** Verified no prefilled credentials or quick buttons exist.
 - [x] **Externalize Secrets & Scrub Personal Info:** Created `.env` and `.env.example`; sanitized `database.json`.
 - [x] **Isolated Feature Branch:** All work isolated on `feature/security-and-auth-unification`.
+- [x] **Zero Vulnerabilities (npm audit):** Fixed all 15 backend vulnerabilities and all 4 frontend vulnerabilities (0 reported across the repository).
+- [x] **Modernize Docker Base Image:** Upgraded `Dockerfile` from EOL `node:14` to `node:20-alpine`.
+- [x] **Prune Unused Dependencies:** Removed unreferenced dependencies (`clone`, `json-server`, `node-fetch`, and `stuff.txt`).
 - [ ] **External Database for Serverless Production:** If deploying to Netlify long-term, connect `api.cjs` to Supabase or Neon PostgreSQL to avoid in-memory data resets on cold starts.
 - [ ] **Tailwind Migration (Optional):** If required by course syllabus, replace custom Vanilla CSS with Tailwind CSS.
