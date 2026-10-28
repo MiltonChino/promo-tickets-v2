@@ -14,6 +14,13 @@ document.querySelector("#app").innerHTML = `
         <span class="logo-accent">⚡</span> DevConsult
       </div>
 
+      <!-- Mobile Hamburger Menu Button -->
+      <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+
       <nav class="nav-links" id="nav-actions-container">
         <!-- Dynamically rendered navigation links and authentication controls -->
       </nav>
@@ -277,6 +284,7 @@ function updateNavState() {
 
   // Bind event listeners
   document.getElementById("btn-logout")?.addEventListener("click", () => {
+    closeMobileMenu();
     clearSession();
     showNotification("You have signed out.", "info");
     updateNavState();
@@ -284,21 +292,25 @@ function updateNavState() {
   });
 
   document.getElementById("btn-login")?.addEventListener("click", () => {
+    closeMobileMenu();
     authModal.openModal("login");
   });
 
   document.getElementById("nav-link-home")?.addEventListener("click", (e) => {
     e.preventDefault();
+    closeMobileMenu();
     navigateTo("#home");
   });
 
   document.getElementById("nav-link-dashboard")?.addEventListener("click", (e) => {
     e.preventDefault();
+    closeMobileMenu();
     navigateTo("#dashboard");
   });
 
   document.getElementById("nav-link-admin")?.addEventListener("click", (e) => {
     e.preventDefault();
+    closeMobileMenu();
     navigateTo("#admin");
   });
 }
@@ -365,8 +377,29 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+// Mobile Menu State Handlers
+export function closeMobileMenu() {
+  const navContainer = document.getElementById("nav-actions-container");
+  const menuBtn = document.getElementById("mobile-menu-btn");
+  if (navContainer && navContainer.classList.contains("open")) {
+    navContainer.classList.remove("open");
+    menuBtn?.classList.remove("active");
+    menuBtn?.setAttribute("aria-expanded", "false");
+  }
+}
+
+export function toggleMobileMenu() {
+  const navContainer = document.getElementById("nav-actions-container");
+  const menuBtn = document.getElementById("mobile-menu-btn");
+  if (!navContainer) return;
+  const isOpen = navContainer.classList.toggle("open");
+  menuBtn?.classList.toggle("active", isOpen);
+  menuBtn?.setAttribute("aria-expanded", String(isOpen));
+}
+
 // Navigation Helper to programmatically update URL route
 export function navigateTo(hash) {
+  closeMobileMenu();
   if (window.location.hash !== hash) {
     window.location.hash = hash;
   } else {
@@ -375,7 +408,26 @@ export function navigateTo(hash) {
 }
 
 // Set up Top Header Navigation Click Listeners
-document.getElementById("brand-logo")?.addEventListener("click", () => navigateTo("#home"));
+document.getElementById("brand-logo")?.addEventListener("click", () => {
+  closeMobileMenu();
+  navigateTo("#home");
+});
+document.getElementById("mobile-menu-btn")?.addEventListener("click", toggleMobileMenu);
+
+// Close mobile navigation menu when clicking outside header
+document.addEventListener("click", (e) => {
+  const header = document.querySelector(".main-header");
+  if (header && !header.contains(e.target)) {
+    closeMobileMenu();
+  }
+});
+
+// Close mobile navigation menu on screen resize above mobile breakpoint
+window.addEventListener("resize", () => {
+  if (window.innerWidth > 768) {
+    closeMobileMenu();
+  }
+});
 
 function handleRoute() {
   const rawHash = window.location.hash;

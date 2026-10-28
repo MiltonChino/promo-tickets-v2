@@ -82,6 +82,50 @@ body {
   font-size: 1.6rem;
 }
 
+/* Mobile Menu Hamburger Button */
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 42px;
+  height: 42px;
+  transition: all var(--transition-fast);
+  z-index: 105;
+}
+
+.mobile-menu-btn:hover {
+  background-color: var(--bg-primary);
+  border-color: #cbd5e1;
+}
+
+.hamburger-bar {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background-color: var(--text-main);
+  border-radius: 2px;
+  transition: transform 0.25s ease-in-out, opacity 0.2s ease-in-out;
+  margin: 0 auto;
+}
+
+/* Animated "X" state when mobile menu is active */
+.mobile-menu-btn.active .hamburger-bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.mobile-menu-btn.active .hamburger-bar:nth-child(2) {
+  opacity: 0;
+}
+
+.mobile-menu-btn.active .hamburger-bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
 /* Connection Status Badge */
 .connection-status {
   display: flex;
@@ -1318,19 +1362,223 @@ body {
   gap: 1.5rem;
 }
 
+/* ==========================================================================
+   Comprehensive Mobile Responsive Enhancements
+   ========================================================================== */
+
 @media (max-width: 768px) {
-  .admin-grid {
-    grid-template-columns: 1fr;
+  .header-container {
+    padding: 0.85rem 1.25rem;
+    position: relative;
   }
+
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  /* Mobile Dropdown Navigation Drawer */
+  .nav-links {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background-color: var(--bg-secondary);
+    border-bottom: 2px solid var(--border-color);
+    box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.12);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, visibility 0.25s ease;
+  }
+
+  .nav-links.open {
+    max-height: 420px;
+    opacity: 1;
+    visibility: visible;
+    padding: 0.75rem 1.25rem 1.25rem 1.25rem;
+  }
+
+  .nav-link {
+    padding: 0.85rem 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .nav-link:hover,
+  .nav-link.active {
+    background-color: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    padding-left: 0.85rem;
+  }
+
+  #nav-auth-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  #nav-auth-controls .btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+
+  .user-avatar-pill {
+    justify-content: center;
+    width: 100%;
+    padding: 0.65rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  /* Admin panel mobile layout */
+  .admin-wrapper {
+    padding: 1.25rem 1rem;
+  }
+
   .admin-header {
     flex-direction: column;
+    gap: 1rem;
   }
+
+  .admin-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .admin-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .draw-control-header {
     flex-direction: column;
     align-items: stretch;
+    text-align: center;
+    gap: 1rem;
   }
+
   .btn-draw-large {
+    width: 100%;
     justify-content: center;
+  }
+
+  .winner-banner-card {
+    padding: 1.25rem 1rem;
+  }
+
+  .winner-banner-title {
+    font-size: 1.35rem;
+  }
+
+  .winner-banner-details {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: left;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Hero section mobile adjustments */
+  .hero-section {
+    margin: 1.5rem auto;
+    padding: 0 1.25rem;
+    gap: 1.75rem;
+  }
+
+  .hero-title {
+    font-size: 2.15rem;
+    line-height: 1.2;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Dashboard mobile adjustments */
+  .dashboard-wrapper {
+    padding: 0 1rem;
+    margin: 1.25rem auto;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .dashboard-title {
+    font-size: 1.45rem;
+  }
+
+  .dashboard-header .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-card {
+    padding: 1.25rem;
+  }
+
+  .ticket-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .ticket-meta {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  /* Toast Notification mobile positioning */
+  .notification-container {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  .notification-toast {
+    min-width: unset;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Modal Dialog mobile sizing */
+  .modal-card {
+    padding: 1.5rem 1.25rem;
+    margin: 0.75rem;
+  }
+
+  .auth-title {
+    font-size: 1.3rem;
   }
 }
 
