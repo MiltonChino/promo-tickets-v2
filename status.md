@@ -30,7 +30,7 @@ A direct comparison between the initial project blueprint ([plan.md](file:///hom
 | Dimension | Specified in `plan.md` | Actual Codebase Implementation | Status |
 | :--- | :--- | :--- | :--- |
 | **Backend Framework** | Node.js (Express) | Dual backend: `server.js` (Express + `json-server`) and `api.cjs` (Netlify serverless Express) | ✅ Both now synchronized with identical security & auth logic |
-| **Database** | PostgreSQL with relational tables (`Users`, `Tickets`) | Local: LowDB JSON (`database.json`); Netlify: serverless array store | ⚠️ Functional locally, but external DB (Supabase/Neon) recommended for production serverless persistence |
+| **Database** | PostgreSQL with relational tables (`Users`, `Tickets`) | Local: LowDB JSON (`database.json`); Netlify: PostgreSQL adapter (`dbAdapter.cjs`) with automatic schema initialization and seamless local fallback | ✅ Implemented with reversible fallback |
 | **Frontend Styling** | Tailwind CSS | Custom **Vanilla CSS** (`wdd330-frontend/src/style.css`, 1,338 lines) | ⚠️ Custom design system in place; Tailwind not currently installed |
 | **Authentication** | JWT stored in client `localStorage` | JWT (`jsonwebtoken`) stored in `localStorage` under `devconsult_token` | ✅ Fully implemented and secure |
 | **Login Flow** | Single unified login | Single modal login for clients & admins; no quick-login buttons | ✅ Unified & hardened |
@@ -133,5 +133,7 @@ ADMIN_NAME=Administrator
 - [x] **Zero Vulnerabilities (npm audit):** Fixed all 15 backend vulnerabilities and all 4 frontend vulnerabilities (0 reported across the repository).
 - [x] **Modernize Docker Base Image:** Upgraded `Dockerfile` from EOL `node:14` to `node:20-alpine`.
 - [x] **Prune Unused Dependencies:** Removed unreferenced dependencies (`clone`, `json-server`, `node-fetch`, and `stuff.txt`).
-- [ ] **External Database for Serverless Production:** If deploying to Netlify long-term, connect `api.cjs` to Supabase or Neon PostgreSQL to avoid in-memory data resets on cold starts.
+- [x] **Tech Stack & Urgency Fields:** Added `tech_stack` and `urgency` (Urgent, Medium, Low) fields across client ticket creation, backend storage, dashboard cards, and admin spotlight.
+- [x] **Ticket Lifecycle Management:** Added full client edit and delete for pending tickets, admin status toggling (`closed`, `pending`, `won`), and three-column admin dashboard with dedicated closed ticket pool.
+- [x] **External Database Adapter for Netlify Serverless (Reversible):** Added `dbAdapter.cjs` supporting PostgreSQL (`pg`) with automatic table creation/seeding, and transparent fallback to local memory store when `DATABASE_URL` is omitted.
 - [ ] **Tailwind Migration (Optional):** If required by course syllabus, replace custom Vanilla CSS with Tailwind CSS.
