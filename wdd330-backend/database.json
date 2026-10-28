@@ -23,9 +23,9 @@
     },
     {
       "id": 4,
-      "name": "Milton Chino",
-      "email": "milton.chino97@gmail.com",
-      "password_hash": "f40017f219ba82c22cb808420347bdf9135c3e9581b76a3e8c12351a4ea1cc4f",
+      "name": "Sample Client",
+      "email": "client@example.com",
+      "password_hash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
       "created_at": 1784586011736
     },
     {
@@ -77,7 +77,7 @@
       "project_title": "apointment system for consulting 2",
       "project_description": "same project more features needed.",
       "budget_range": "$10k - $20k",
-      "status": "pending",
+      "status": "won",
       "created_at": 1784690286318,
       "id": 5
     },

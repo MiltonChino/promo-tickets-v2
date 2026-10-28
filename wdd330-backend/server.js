@@ -1,24 +1,46 @@
 const fs = require("fs");
+const path = require("path");
 const crypto = require("crypto");
 const clone = require("clone");
-const data = require("./db.json");
-// import jsonServer from "json-server";
 const jsonServer = require("json-server");
-
-// import  jwt from "jsonwebtoken";
 const jwt = require("jsonwebtoken");
+const bodyParser = require("body-parser");
+
+// Load .env configuration
+const envPaths = [
+  path.resolve(process.cwd(), ".env"),
+  path.resolve(__dirname, ".env"),
+  path.resolve(__dirname, "../.env")
+];
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    try {
+      require("dotenv").config({ path: envPath });
+      break;
+    } catch (e) {
+      if (typeof process.loadEnvFile === "function") {
+        try { process.loadEnvFile(envPath); break; } catch (err) {}
+      }
+    }
+  }
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || "devconsult_fallback_secret_key_2026";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "admin@devconsult.com").toLowerCase();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "AdminSecure2026!";
+const ADMIN_NAME = process.env.ADMIN_NAME || "Administrator";
+const PORT = process.env.PORT || 3000;
 
 const isProductionEnv = process.env.NODE_ENV === "production";
+const data = require("./db.json");
 
-// import fetch from "node-fetch";
-// import bodyParser from "json-server/lib/server/body-parser";
-const bodyParser = require("body-parser");
 const server = jsonServer.create();
-// const router = jsonServer.router("database.json");
 
-// For mocking the POST request, POST request won't make any changes to the DB in production environment
+// For mocking the POST request in production environment
+const dbPath = path.resolve(__dirname, "database.json");
 const router = jsonServer.router(
-  isProductionEnv ? clone(data) : "database.json",
+  isProductionEnv ? clone(data) : dbPath,
   {
     _isFake: isProductionEnv
   }
@@ -27,6 +49,7 @@ const router = jsonServer.router(
 server.use(bodyParser.urlencoded({ extended: true }));
 server.use(bodyParser.json());
 server.use(jsonServer.defaults());
+
 if (isProductionEnv) {
   server.use((req, res, next) => {
     if (req.path !== "/") router.db.setState(clone(data));
@@ -34,162 +57,192 @@ if (isProductionEnv) {
   });
 }
 
-const SECRET_KEY = "123456789";
-
-// token timeout is set here (extended to 1 hour for better UX/testing)
-const expiresIn = "1h";
-
-// Hash utility for storing and verifying passwords
+// Password hashing utility
 function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
 // Create a token from a payload
 function createToken(payload) {
-  return jwt.sign(payload, SECRET_KEY, { expiresIn });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 // Verify the token
 function verifyToken(token) {
-  return jwt.verify(token, SECRET_KEY, (err, decode) => {
-    if (err) {
-      throw Error(err);
-    } else {
-      return decode;
-    }
-  });
+  return jwt.verify(token, JWT_SECRET);
 }
 
-// Check if the user exists in database using hashed password comparison
-function isAuthenticated({ email, password }) {
-  const hashedPassword = hashPassword(password);
-  return (
-    router.db
-      .get("users")
-      .findIndex((user) => user.email === email && user.password_hash === hashedPassword)
-      .value() !== -1
-  );
-}
-
-server.post(["/admin/login", "/api/admin/login"], (req, res) => {
-  const username = req.body.username || req.body.email;
+// --------------------------------------------------------------------------
+// Unified Login Handler (Clients and Admins authenticate via single endpoint)
+// --------------------------------------------------------------------------
+const handleUnifiedLogin = (req, res) => {
+  const identifier = (req.body.email || req.body.username || "").trim().toLowerCase();
   const password = req.body.password;
-  console.log("Admin login attempt:", username);
 
-  if ((username === "admin" || username === "admin@example.com" || username === "admin@devconsult.com") && password === "admin") {
-    const accessToken = createToken({ email: "admin@devconsult.com", role: "admin" });
-    return res.status(200).json({
-      accessToken,
-      user: {
-        id: 999,
-        name: "Administrator",
-        email: "admin",
-        role: "admin",
-        isAdmin: true
-      }
+  if (!identifier || !password) {
+    return res.status(400).json({ status: 400, message: "Email/username and password are required" });
+  }
+
+  // 1. Check administrative credentials from environment configuration
+  if (
+    (identifier === ADMIN_EMAIL || identifier === "admin") &&
+    password === ADMIN_PASSWORD
+  ) {
+    const accessToken = createToken({
+      id: 999,
+      email: ADMIN_EMAIL,
+      role: "admin",
+      name: ADMIN_NAME
     });
-  } else {
-    return res.status(401).json({ status: 401, message: "Invalid admin credentials. Access permitted for admin account only." });
-  }
-});
-
-server.post(["/login", "/api/login"], (req, res) => {
-  const { email, password } = req.body;
-  console.log("Login attempt:", email);
-  if (!email || !password) {
-    res.status(400).json({ status: 400, message: "Email and password are required" });
-    return;
-  }
-
-  // Handle special admin login via general login endpoint
-  if ((email === "admin" || email === "admin@example.com") && password === "admin") {
-    const accessToken = createToken({ email: "admin@devconsult.com", role: "admin" });
     return res.status(200).json({
       accessToken,
       user: {
         id: 999,
-        name: "Administrator",
-        email: "admin",
+        name: ADMIN_NAME,
+        email: ADMIN_EMAIL,
         role: "admin",
         isAdmin: true
       }
     });
   }
 
-  if (isAuthenticated({ email, password }) === false) {
-    const status = 401;
-    const message = "Incorrect email or password";
-    res.status(status).json({ status, message });
-    return;
-  }
+  // 2. Check client user in database
   const user = router.db
     .get("users")
-    .find({ email })
+    .find((u) => u.email && u.email.toLowerCase() === identifier)
     .value();
 
-  const accessToken = createToken({ email });
-  res.status(200).json({
+  const hashedPassword = hashPassword(password);
+  if (!user || user.password_hash !== hashedPassword) {
+    return res.status(401).json({ status: 401, message: "Incorrect email or password" });
+  }
+
+  const role = user.role || (user.email === ADMIN_EMAIL ? "admin" : "client");
+  const accessToken = createToken({
+    id: user.id,
+    email: user.email,
+    role,
+    name: user.name
+  });
+
+  return res.status(200).json({
     accessToken,
     user: {
-      id: user ? user.id : 1,
-      name: user ? user.name : "User",
-      email,
-      role: (user && user.role) || "client",
-      isAdmin: Boolean(user && user.role === "admin")
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role,
+      isAdmin: role === "admin"
     }
   });
-});
+};
 
+server.post(["/login", "/api/login", "/admin/login", "/api/admin/login"], handleUnifiedLogin);
+
+// --------------------------------------------------------------------------
+// User Registration Handler
+// --------------------------------------------------------------------------
 server.post(["/register", "/api/register"], (req, res) => {
   const { name, email, password } = req.body;
-  console.log("Registration attempt:", email);
+
   if (!email || !password || !name) {
-    res.status(400).json({ status: 400, message: "Name, email, and password are required" });
-    return;
+    return res.status(400).json({ status: 400, message: "Name, email, and password are required" });
   }
-  
-  // Check if user already exists
+
+  const cleanEmail = email.trim().toLowerCase();
+  if (cleanEmail === ADMIN_EMAIL || cleanEmail === "admin") {
+    return res.status(400).json({ status: 400, message: "This email address is reserved." });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ status: 400, message: "Password must be at least 6 characters." });
+  }
+
   const existingUser = router.db
     .get("users")
-    .find({ email })
+    .find((u) => u.email && u.email.toLowerCase() === cleanEmail)
     .value();
-    
+
   if (existingUser) {
-    res.status(400).json({ status: 400, message: "Email already registered" });
-    return;
+    return res.status(400).json({ status: 400, message: "Email already registered." });
   }
 
   const users = router.db.get("users");
   const nextId = users.value().length > 0 ? Math.max(...users.map((u) => u.id).value()) + 1 : 1;
-  
+
   const newUser = {
     id: nextId,
-    name,
-    email,
+    name: String(name).trim(),
+    email: cleanEmail,
+    role: "client",
     password_hash: hashPassword(password),
     created_at: Date.now()
   };
 
   users.push(newUser).write();
-  
-  // Auto-login by returning JWT token and user info on successful registration
-  const accessToken = createToken({ email });
-  res.status(201).json({
+
+  const accessToken = createToken({
+    id: newUser.id,
+    email: newUser.email,
+    role: "client",
+    name: newUser.name
+  });
+
+  return res.status(201).json({
     accessToken,
     user: {
       id: newUser.id,
       name: newUser.name,
-      email: newUser.email
+      email: newUser.email,
+      role: "client",
+      isAdmin: false
     },
     message: "User registered successfully"
   });
 });
 
-// Admin Raffle Draw Endpoint
+// --------------------------------------------------------------------------
+// Authentication Verification Middleware
+// --------------------------------------------------------------------------
+server.use((req, res, next) => {
+  const publicPaths = [
+    "/login",
+    "/api/login",
+    "/register",
+    "/api/register",
+    "/admin/login",
+    "/api/admin/login"
+  ];
+
+  if (publicPaths.includes(req.path)) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ status: 401, message: "Authorization required: Bearer token missing" });
+  }
+
+  try {
+    const token = authHeader.split(" ")[1];
+    req.claims = verifyToken(token);
+    next();
+  } catch (err) {
+    return res.status(401).json({ status: 401, message: "Invalid or expired session token. Please sign in again." });
+  }
+});
+
+// --------------------------------------------------------------------------
+// Admin Raffle Draw Endpoint (Protected: Admin role required)
+// --------------------------------------------------------------------------
 server.all(["/admin/draw", "/api/admin/draw"], (req, res) => {
+  if (!req.claims || req.claims.role !== "admin") {
+    return res.status(403).json({ status: 403, message: "Forbidden: Administrator role required to execute raffle draw." });
+  }
+
   try {
     const tickets = router.db.get("tickets").value() || [];
-    const pendingTickets = tickets.filter((t) => t.status === "pending");
+    const pendingTickets = tickets.filter((t) => (t.status || "pending").toLowerCase() === "pending");
 
     if (pendingTickets.length === 0) {
       return res.status(200).json({
@@ -203,14 +256,12 @@ server.all(["/admin/draw", "/api/admin/draw"], (req, res) => {
     const winnerIndex = Math.floor(Math.random() * pendingTickets.length);
     const winningTicket = pendingTickets[winnerIndex];
 
-    // Update status to 'won' in DB
     router.db
       .get("tickets")
       .find({ id: winningTicket.id })
       .assign({ status: "won" })
       .write();
 
-    // Attach user details if found
     const user = router.db
       .get("users")
       .find({ id: winningTicket.user_id })
@@ -219,7 +270,7 @@ server.all(["/admin/draw", "/api/admin/draw"], (req, res) => {
     const result = {
       ...winningTicket,
       status: "won",
-      user_name: user ? user.name : "Client",
+      user_name: user ? user.name : "Client User",
       user_email: user ? user.email : ""
     };
 
@@ -235,8 +286,14 @@ server.all(["/admin/draw", "/api/admin/draw"], (req, res) => {
   }
 });
 
-// Admin Reset Raffle Pool Endpoint (Reset all tickets to 'pending')
+// --------------------------------------------------------------------------
+// Admin Reset Raffle Pool Endpoint (Protected: Admin role required)
+// --------------------------------------------------------------------------
 server.all(["/admin/reset", "/api/admin/reset"], (req, res) => {
+  if (!req.claims || req.claims.role !== "admin") {
+    return res.status(403).json({ status: 403, message: "Forbidden: Administrator role required to reset raffle pool." });
+  }
+
   try {
     const tickets = router.db.get("tickets").value() || [];
     tickets.forEach((t) => {
@@ -257,79 +314,66 @@ server.all(["/admin/reset", "/api/admin/reset"], (req, res) => {
   }
 });
 
-// Middleware to pre-process POST requests (injects user_id and created_at)
-server.use((req, res, next) => {
-  if (req.method === "POST") {
-    const { authorization } = req.headers;
-    if (authorization) {
-      try {
-        const [scheme, token] = authorization.split(" ");
-        req.claims = verifyToken(token);
-        if (req.claims && req.claims.email) {
-          const user = router.db
-            .get("users")
-            .find({ email: req.claims.email })
-            .value();
-          if (user) {
-            req.body.user_id = user.id;
-          }
-        }
-      } catch (err) {
-        console.error("Token decoding error in POST middleware:", err.message);
-      }
-    }
-    req.body.created_at = Date.now();
-    if ((req.path === "/tickets" || req.path === "/api/tickets") && !req.body.status) {
-      req.body.status = "pending";
-    }
+// --------------------------------------------------------------------------
+// Ticket Endpoints (Secured: No IDOR data leakage)
+// --------------------------------------------------------------------------
+
+// GET /api/tickets: Admins see all; clients see ONLY their own tickets
+server.get(["/tickets", "/api/tickets"], (req, res) => {
+  const claims = req.claims;
+  const tickets = router.db.get("tickets").value() || [];
+
+  if (claims && claims.role === "admin") {
+    return res.status(200).json(tickets);
   }
-  next();
+
+  const user = router.db
+    .get("users")
+    .find((u) => u.email === claims.email || u.id === claims.id)
+    .value();
+
+  const userId = user ? user.id : claims.id;
+  const userTickets = tickets.filter((t) => t.user_id === userId);
+  return res.status(200).json(userTickets);
 });
 
-// Auth check middleware for protected endpoints
-server.use((req, res, next) => {
-  const publicPaths = [
-    "/login",
-    "/api/login",
-    "/register",
-    "/api/register",
-    "/admin/login",
-    "/api/admin/login",
-    "/admin/draw",
-    "/api/admin/draw",
-    "/admin/reset",
-    "/api/admin/reset"
-  ];
-  if (publicPaths.includes(req.path)) {
-    return next();
+// POST /api/tickets: Derives user_id from verified JWT claims
+server.post(["/tickets", "/api/tickets"], (req, res) => {
+  const claims = req.claims;
+  const { project_title, project_description, budget_range } = req.body;
+
+  if (!project_title || !project_description) {
+    return res.status(400).json({ status: 400, message: "Project title and description are required" });
   }
 
-  if (
-    req.headers.authorization === undefined ||
-    req.headers.authorization.split(" ")[0] !== "Bearer"
-  ) {
-    const status = 401;
-    const message = "Error in authorization format";
-    res.status(status).json({ status, message });
-    return;
-  }
-  try {
-    console.log("checking token");
-    const token = req.headers.authorization.split(" ")[1];
-    verifyToken(token);
-    next();
-  } catch (err) {
-    const status = 401;
-    const message = err.message || "Invalid or expired token";
-    res.status(status).json({ status, message });
-  }
+  const user = router.db
+    .get("users")
+    .find((u) => u.email === claims.email || u.id === claims.id)
+    .value();
+
+  const userId = user ? user.id : (claims.id || 1);
+  const tickets = router.db.get("tickets");
+  const nextId = tickets.value().length > 0 ? Math.max(...tickets.map((t) => t.id).value()) + 1 : 1;
+
+  const newTicket = {
+    id: nextId,
+    user_id: userId,
+    project_title: String(project_title).trim(),
+    project_description: String(project_description).trim(),
+    budget_range: budget_range || "$5k - $10k",
+    status: "pending",
+    created_at: Date.now()
+  };
+
+  tickets.push(newTicket).write();
+  return res.status(201).json(newTicket);
 });
 
 server.use(router);
 
 if (require.main === module) {
-  server.listen(3000, () => {
-    console.log("Run Auth API Server on port 3000");
+  server.listen(PORT, () => {
+    console.log(`Run Auth API Server on port ${PORT}`);
   });
 }
 

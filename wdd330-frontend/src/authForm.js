@@ -46,16 +46,16 @@ export function createAuthModal(onLoginSubmit, onRegisterSubmit) {
       <div class="auth-panel" id="panel-login" role="tabpanel" aria-labelledby="tab-login">
         <form id="form-login" novalidate>
           <div class="form-group">
-            <label for="login-email" class="form-label">Email Address</label>
+            <label for="login-email" class="form-label">Email or Username</label>
             <div class="input-wrapper">
               <span class="input-icon">✉</span>
               <input 
-                type="email" 
+                type="text" 
                 id="login-email" 
                 name="email" 
                 class="form-input" 
-                placeholder="name@company.com" 
-                autocomplete="email"
+                placeholder="name@company.com or admin" 
+                autocomplete="username"
                 required
               />
             </div>
@@ -322,15 +322,15 @@ function setupAuthEventListeners(container, onLoginSubmit, onRegisterSubmit) {
     clearValidationErrors(container);
     clearAuthAlert(container);
 
-    const email = container.querySelector("#login-email").value.trim();
+    const identifier = container.querySelector("#login-email").value.trim();
     const password = container.querySelector("#login-password").value;
 
     let hasErrors = false;
 
-    if (!email) {
-      setFieldError(container, "login-email", "Email address is required.");
+    if (!identifier) {
+      setFieldError(container, "login-email", "Email address or username is required.");
       hasErrors = true;
-    } else if (!isValidEmail(email)) {
+    } else if (identifier.includes("@") && !isValidEmail(identifier)) {
       setFieldError(container, "login-email", "Please enter a valid email address.");
       hasErrors = true;
     }
@@ -341,7 +341,7 @@ function setupAuthEventListeners(container, onLoginSubmit, onRegisterSubmit) {
     }
 
     if (!hasErrors && onLoginSubmit) {
-      onLoginSubmit({ email, password });
+      onLoginSubmit({ email: identifier, password });
     }
   });
 

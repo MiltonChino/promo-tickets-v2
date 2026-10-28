@@ -3,8 +3,6 @@ import { createAuthModal } from "./authForm.js";
 import { saveSession, getUser, clearSession, isLoggedIn, isAdminLoggedIn } from "./auth.js";
 import { renderDashboard } from "./dashboard.js";
 import { renderAdminRaffle } from "./adminRaffle.js";
-import { renderAdminLogin } from "./adminLogin.js";
-
 
 // Main App Container Setup
 document.querySelector("#app").innerHTML = `
@@ -17,11 +15,7 @@ document.querySelector("#app").innerHTML = `
       </div>
 
       <nav class="nav-links" id="nav-actions-container">
-        <a href="#home" class="nav-link" id="nav-link-home">Home</a>
-        <a href="#dashboard" class="nav-link" id="nav-link-dashboard">Dashboard</a>
-        <div id="nav-auth-controls" style="display: flex; gap: 0.5rem; align-items: center;">
-          <button class="btn btn-outline" id="btn-login">Sign In</button>
-        </div>
+        <!-- Dynamically rendered navigation links and authentication controls -->
       </nav>
     </div>
   </header>
@@ -60,9 +54,9 @@ export function showNotification(message, type = "info") {
   }, 4000);
 }
 
-// Initialize Auth Modal Component
+// Initialize Single Unified Auth Modal Component (For both Clients and Admins)
 const authModal = createAuthModal(
-  // Login Handler
+  // Unified Login Handler
   async (credentials) => {
     authModal.setSubmitting(true, "login");
     try {
@@ -76,17 +70,28 @@ const authModal = createAuthModal(
 
       if (res.ok && data.accessToken) {
         saveSession(data.accessToken, data.user || { name: credentials.email.split("@")[0], email: credentials.email });
-        showNotification(`Welcome back, ${getUser().name}!`, "success");
+        const user = getUser() || {};
+        const isAdmin = isAdminLoggedIn();
+
+        showNotification(
+          isAdmin ? `Welcome, ${user.name || "Administrator"}!` : `Welcome back, ${user.name || "Client"}!`,
+          "success"
+        );
         authModal.closeModal();
         updateNavState();
-        navigateTo("#dashboard");
+
+        if (isAdmin) {
+          navigateTo("#admin");
+        } else {
+          navigateTo("#dashboard");
+        }
       } else {
         authModal.setAlert(data.message || "Invalid credentials. Please try again.", "error");
       }
     } catch (err) {
       console.error(err);
       authModal.setSubmitting(false, "login");
-      authModal.setAlert("Network error. Is the backend server running on port 3000?", "error");
+      authModal.setAlert("Network error connecting to backend service.", "error");
     }
   },
   // Register Handler
@@ -117,7 +122,7 @@ const authModal = createAuthModal(
     } catch (err) {
       console.error(err);
       authModal.setSubmitting(false, "register");
-      authModal.setAlert("Network error. Is the backend server running on port 3000?", "error");
+      authModal.setAlert("Network error connecting to backend service.", "error");
     }
   }
 );
@@ -125,7 +130,9 @@ const authModal = createAuthModal(
 // Renders the Hero Landing Page View
 function showHomeView() {
   const isAdmin = isAdminLoggedIn();
+  const loggedIn = isLoggedIn();
   const container = document.getElementById("main-view-container");
+
   container.innerHTML = `
     <!-- Hero Section -->
     <main class="hero-section">
@@ -139,7 +146,7 @@ function showHomeView() {
         
         <div class="hero-actions" style="${!isAdmin ? 'justify-content: center;' : ''}">
           <button class="btn btn-primary" id="btn-get-started">
-            ${isLoggedIn() ? "Go to Dashboard" : "Get Started"}
+            ${isAdmin ? "Go to Admin Panel" : loggedIn ? "Go to Dashboard" : "Get Started"}
           </button>
           <button class="btn btn-secondary" id="btn-learn-more">How it Works</button>
         </div>
@@ -149,16 +156,16 @@ function showHomeView() {
       <!-- Live Connection Verification Card (Admin Only) -->
       <div class="card connection-card">
         <div class="card-header">
-          <h3 class="card-title">Database & System Check</h3>
-          <span class="badge-accent">System Status</span>
+          <h3 class="card-title">System Status Check</h3>
+          <span class="badge-accent">Admin Diagnostic</span>
         </div>
         <p class="card-description">
-          Verifies that the frontend server proxy communicates with the local JSON database via the Node.js backend.
+          Live verification of authenticated API route communication and session protection.
         </p>
         
         <div class="status-display" id="api-status-display">
           <div class="loader"></div>
-          <p>Testing connection to <code>http://localhost:3000/tickets</code>...</p>
+          <p>Testing connection to protected tickets endpoint...</p>
         </div>
       </div>
       ` : ''}
@@ -173,21 +180,21 @@ function showHomeView() {
           <div class="info-icon">📝</div>
           <h4 class="info-title">1. Create Ticket</h4>
           <p class="info-text">
-            Submit your application detailing your tech stack, project goals, and consultation needs.
+            Submit your consultation request detailing your tech stack, project goals, and estimated budget.
           </p>
         </div>
         <div class="info-card">
           <div class="info-icon">🎫</div>
           <h4 class="info-title">2. Enter Raffle Pool</h4>
           <p class="info-text">
-            Your request is entered into our active ticket list with a status of <code>pending</code>.
+            Your request enters the active ticket pool with a status of <code>pending</code>.
           </p>
         </div>
         <div class="info-card">
           <div class="info-icon">🏆</div>
           <h4 class="info-title">3. Random Draw</h4>
           <p class="info-text">
-            The consulting team will review all tickets and randomly select winners to get a free consulting session. 
+            Administrators trigger the random selection engine to award free consultation sessions to lucky entrants!
           </p>
         </div>
       </div>
@@ -196,7 +203,9 @@ function showHomeView() {
 
   // Attach Hero section event listeners
   document.getElementById("btn-get-started")?.addEventListener("click", () => {
-    if (isLoggedIn()) {
+    if (isAdmin) {
+      navigateTo("#admin");
+    } else if (loggedIn) {
       navigateTo("#dashboard");
     } else {
       authModal.openModal("register");
@@ -207,14 +216,16 @@ function showHomeView() {
     document.getElementById("info-section")?.scrollIntoView({ behavior: "smooth" });
   });
 
-  // Run connection verification
-  checkBackendConnection();
+  if (isAdmin) {
+    checkBackendConnection();
+  }
 }
 
 // Renders the Client Dashboard View
 function showDashboardView() {
   if (!isLoggedIn()) {
     showNotification("Please sign in to view your dashboard.", "info");
+    navigateTo("#home");
     authModal.openModal("login");
     return;
   }
@@ -222,106 +233,125 @@ function showDashboardView() {
   renderDashboard(container, showNotification);
 }
 
-// Renders the dedicated Admin Login View
-function showAdminLoginView() {
-  const container = document.getElementById("main-view-container");
-  renderAdminLogin(container, showNotification, () => {
-    updateNavState();
-    navigateTo("#admin");
-  });
-}
-
 // Renders the Admin Raffle View (Protected for Admin user only)
 function showAdminRaffleView() {
   if (!isAdminLoggedIn()) {
-    showNotification("Admin login required to access the admin panel.", "info");
-    showAdminLoginView();
+    if (isLoggedIn()) {
+      showNotification("Access restricted: Administrator privileges required.", "error");
+      navigateTo("#dashboard");
+    } else {
+      showNotification("Please sign in with administrator credentials.", "info");
+      navigateTo("#home");
+      authModal.openModal("login");
+    }
     return;
   }
   const container = document.getElementById("main-view-container");
   renderAdminRaffle(container, showNotification);
 }
 
-
 // Dynamically updates header navigation bar based on auth session
 function updateNavState() {
-  const authControls = document.getElementById("nav-auth-controls");
-  if (!authControls) return;
+  const navContainer = document.getElementById("nav-actions-container");
+  if (!navContainer) return;
 
-  if (isLoggedIn()) {
-    const user = getUser() || { name: "Client" };
-    const isAdmin = isAdminLoggedIn();
-    authControls.innerHTML = `
-      <div class="user-avatar-pill" style="${isAdmin ? 'border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.1); color: #ef4444;' : ''}">
-        <span>${isAdmin ? "👑" : "👤"}</span> ${escapeHtml(user.name)}
-      </div>
-      <button class="btn btn-outline btn-signout" id="btn-logout">Sign Out</button>
-    `;
+  const loggedIn = isLoggedIn();
+  const isAdmin = isAdminLoggedIn();
+  const user = getUser() || { name: "User" };
 
-    document.getElementById("btn-logout")?.addEventListener("click", () => {
-      clearSession();
-      showNotification("You have signed out.", "info");
-      updateNavState();
-      navigateTo("#home");
-    });
-  } else {
-    authControls.innerHTML = `
-      <button class="btn btn-outline" id="btn-login">Sign In</button>
-    `;
-    document.getElementById("btn-login")?.addEventListener("click", () => {
-      authModal.openModal("login");
-    });
-  }
+  navContainer.innerHTML = `
+    <a href="#home" class="nav-link" id="nav-link-home">Home</a>
+    ${loggedIn && !isAdmin ? '<a href="#dashboard" class="nav-link" id="nav-link-dashboard">Dashboard</a>' : ''}
+    ${isAdmin ? '<a href="#admin" class="nav-link" id="nav-link-admin">Admin Panel</a>' : ''}
+    <div id="nav-auth-controls" style="display: flex; gap: 0.5rem; align-items: center;">
+      ${loggedIn ? `
+        <div class="user-avatar-pill" style="${isAdmin ? 'border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.1); color: #ef4444;' : ''}">
+          <span>${isAdmin ? "👑" : "👤"}</span> ${escapeHtml(user.name)}
+        </div>
+        <button class="btn btn-outline btn-signout" id="btn-logout">Sign Out</button>
+      ` : `
+        <button class="btn btn-outline" id="btn-login">Sign In</button>
+      `}
+    </div>
+  `;
 
-  const statusPill = document.getElementById("connection-status-pill");
-  if (statusPill) {
-    statusPill.style.display = isAdminLoggedIn() ? "flex" : "none";
-  }
+  // Bind event listeners
+  document.getElementById("btn-logout")?.addEventListener("click", () => {
+    clearSession();
+    showNotification("You have signed out.", "info");
+    updateNavState();
+    navigateTo("#home");
+  });
+
+  document.getElementById("btn-login")?.addEventListener("click", () => {
+    authModal.openModal("login");
+  });
+
+  document.getElementById("nav-link-home")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    navigateTo("#home");
+  });
+
+  document.getElementById("nav-link-dashboard")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    navigateTo("#dashboard");
+  });
+
+  document.getElementById("nav-link-admin")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    navigateTo("#admin");
+  });
 }
 
 // Backend connectivity test function (Admin Only)
 async function checkBackendConnection() {
-  const statusPill = document.getElementById("connection-status-pill");
-  const isAdmin = isAdminLoggedIn();
-
-  if (statusPill) {
-    statusPill.style.display = isAdmin ? "flex" : "none";
-  }
-
-  if (!isAdmin) return;
-
-  const statusDot = statusPill?.querySelector(".status-dot");
-  const statusText = statusPill?.querySelector(".status-text");
   const display = document.getElementById("api-status-display");
+  if (!display) return;
 
   try {
-    const response = await fetch("/api/tickets");
-    if (display) display.innerHTML = "";
+    const token = localStorage.getItem("devconsult_token");
+    const response = await fetch("/api/tickets", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
 
-    if (response.status === 401 || response.status === 200) {
-      if (statusPill) statusPill.className = "connection-status success";
-      if (statusDot) statusDot.className = "status-dot online";
-      if (statusText) statusText.textContent = "Backend Online";
+    display.innerHTML = "";
 
-      if (display) {
-        display.innerHTML = `
-          <div class="status-result success">
-            <span class="status-result-icon">🟢</span>
-            <div>
-              <h4 class="status-result-title">Backend Live & Protected</h4>
-              <p class="status-result-text">
-                Communication with Node.js & JSON DB is active. JWT authentication middleware is protecting ticket routes.
-              </p>
-            </div>
+    if (response.status === 200) {
+      display.innerHTML = `
+        <div class="status-result success">
+          <span class="status-result-icon">🟢</span>
+          <div>
+            <h4 class="status-result-title">Backend Live & Protected</h4>
+            <p class="status-result-text">
+              Communication with backend service is active. JWT role-based authentication is guarding routes.
+            </p>
           </div>
-        `;
-      }
+        </div>
+      `;
+    } else {
+      display.innerHTML = `
+        <div class="status-result warning">
+          <span class="status-result-icon">⚠️</span>
+          <div>
+            <h4 class="status-result-title">Authentication Check</h4>
+            <p class="status-result-text">Response status: ${response.status}. Re-authenticating may be required.</p>
+          </div>
+        </div>
+      `;
     }
   } catch (error) {
-    console.error("Backend connection failed:", error);
-    if (statusPill) statusPill.className = "connection-status error";
-    if (statusDot) statusDot.className = "status-dot offline-dot";
-    if (statusText) statusText.textContent = "Backend Offline";
+    console.error("Backend connection test failed:", error);
+    if (display) {
+      display.innerHTML = `
+        <div class="status-result error">
+          <span class="status-result-icon">🔴</span>
+          <div>
+            <h4 class="status-result-title">Backend Offline</h4>
+            <p class="status-result-text">Could not connect to API server on port 3000.</p>
+          </div>
+        </div>
+      `;
+    }
   }
 }
 
@@ -346,19 +376,10 @@ export function navigateTo(hash) {
 
 // Set up Top Header Navigation Click Listeners
 document.getElementById("brand-logo")?.addEventListener("click", () => navigateTo("#home"));
-document.getElementById("nav-link-home")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  navigateTo("#home");
-});
-document.getElementById("nav-link-dashboard")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  navigateTo("#dashboard");
-});
 
 function handleRoute() {
   const rawHash = window.location.hash;
-  // Fallback to default route if hash is empty or just '#'
-  const hash = (rawHash && rawHash !== "#") ? rawHash : (isLoggedIn() ? "#dashboard" : "#home");
+  const hash = (rawHash && rawHash !== "#") ? rawHash : (isLoggedIn() ? (isAdminLoggedIn() ? "#admin" : "#dashboard") : "#home");
 
   if (window.location.hash !== hash && (!rawHash || rawHash === "#")) {
     window.location.hash = hash;
@@ -368,27 +389,20 @@ function handleRoute() {
   // Highlight active nav links
   document.getElementById("nav-link-home")?.classList.toggle("active", hash === "#home");
   document.getElementById("nav-link-dashboard")?.classList.toggle("active", hash === "#dashboard");
+  document.getElementById("nav-link-admin")?.classList.toggle("active", hash === "#admin" || hash === "#admin-raffle");
 
   if (hash === "#admin" || hash === "#admin-raffle") {
-    if (isAdminLoggedIn()) {
-      showAdminRaffleView();
-    } else {
-      showAdminLoginView();
-    }
+    showAdminRaffleView();
   } else if (hash === "#admin-login") {
+    // Deprecated separate admin route: redirect to unified login
     if (isAdminLoggedIn()) {
       navigateTo("#admin");
     } else {
-      showAdminLoginView();
-    }
-  } else if (hash === "#dashboard") {
-    if (isLoggedIn()) {
-      showDashboardView();
-    } else {
-      showNotification("Please sign in to view your dashboard.", "info");
       navigateTo("#home");
       authModal.openModal("login");
     }
+  } else if (hash === "#dashboard") {
+    showDashboardView();
   } else {
     showHomeView();
   }
