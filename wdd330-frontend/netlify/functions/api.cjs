@@ -49,49 +49,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Seed data without sensitive personal information
-const initialUsers = [
-  {
-    id: 1,
-    name: "Jane Doe",
-    email: "jane@example.com",
-    role: "client",
-    password_hash: "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
-    created_at: 1783814400000
-  },
-  {
-    id: 2,
-    name: "Sample Client",
-    email: "client@example.com",
-    role: "client",
-    password_hash: "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
-    created_at: 1783814400000
-  }
-];
-
-const initialTickets = [
-  {
-    id: 1,
-    user_id: 1,
-    project_title: "E-Commerce Rebuild",
-    project_description: "We need to migrate our legacy web shop to a modern architecture.",
-    budget_range: "$5k - $10k",
-    status: "pending",
-    created_at: 1783814400000
-  },
-  {
-    id: 2,
-    user_id: 2,
-    project_title: "Cloud Infrastructure Consultation",
-    project_description: "Need guidance setting up automated CI/CD and container clustering.",
-    budget_range: "$10k - $20k",
-    status: "pending",
-    created_at: 1783814400000
-  }
-];
-
-let usersStore = [...initialUsers];
-let ticketsStore = [...initialTickets];
+const db = require("./dbAdapter.cjs");
 
 function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
@@ -108,7 +66,7 @@ function verifyToken(token) {
 // --------------------------------------------------------------------------
 // Unified Login Handler (Clients and Admins authenticate via single endpoint)
 // --------------------------------------------------------------------------
-const handleUnifiedLogin = (req, res) => {
+const handleUnifiedLogin = async (req, res) => {
   const identifier = (req.body.email || req.body.username || "").trim().toLowerCase();
   const password = req.body.password;
 
@@ -139,34 +97,36 @@ const handleUnifiedLogin = (req, res) => {
     });
   }
 
-  // 2. Check client user in store
-  const hashedPassword = hashPassword(password);
-  const user = usersStore.find(
-    (u) => u.email.toLowerCase() === identifier && u.password_hash === hashedPassword
-  );
+  // 2. Check client user in database / fallback store
+  try {
+    const user = await db.findUserByEmail(identifier);
+    const hashedPassword = hashPassword(password);
 
-  if (!user) {
-    return res.status(401).json({ status: 401, message: "Incorrect email or password" });
-  }
+    if (!user || user.password_hash !== hashedPassword) {
+      return res.status(401).json({ status: 401, message: "Incorrect email or password" });
+    }
 
-  const role = user.role || "client";
-  const accessToken = createToken({
-    id: user.id,
-    email: user.email,
-    role,
-    name: user.name
-  });
-
-  return res.status(200).json({
-    accessToken,
-    user: {
+    const role = user.role || "client";
+    const accessToken = createToken({
       id: user.id,
-      name: user.name,
       email: user.email,
       role,
-      isAdmin: role === "admin"
-    }
-  });
+      name: user.name
+    });
+
+    return res.status(200).json({
+      accessToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role,
+        isAdmin: role === "admin"
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: "Server error during authentication." });
+  }
 };
 
 app.post(["/login", "/api/login", "/admin/login", "/api/admin/login"], handleUnifiedLogin);
@@ -174,7 +134,7 @@ app.post(["/login", "/api/login", "/admin/login", "/api/admin/login"], handleUni
 // --------------------------------------------------------------------------
 // User Registration Handler
 // --------------------------------------------------------------------------
-const handleRegister = (req, res) => {
+const handleRegister = async (req, res) => {
   const { name, email, password } = req.body || {};
   if (!name || !email || !password) {
     return res.status(400).json({ status: 400, message: "Name, email, and password are required" });
@@ -189,40 +149,40 @@ const handleRegister = (req, res) => {
     return res.status(400).json({ status: 400, message: "Password must be at least 6 characters." });
   }
 
-  const existingUser = usersStore.find((u) => u.email.toLowerCase() === cleanEmail);
-  if (existingUser) {
-    return res.status(400).json({ status: 400, message: "Email already registered" });
-  }
+  try {
+    const existingUser = await db.findUserByEmail(cleanEmail);
+    if (existingUser) {
+      return res.status(400).json({ status: 400, message: "Email already registered" });
+    }
 
-  const nextId = usersStore.length > 0 ? Math.max(...usersStore.map((u) => u.id)) + 1 : 1;
-  const newUser = {
-    id: nextId,
-    name: String(name).trim(),
-    email: cleanEmail,
-    role: "client",
-    password_hash: hashPassword(password),
-    created_at: Date.now()
-  };
+    const newUser = await db.createUser({
+      name: String(name).trim(),
+      email: cleanEmail,
+      role: "client",
+      password_hash: hashPassword(password)
+    });
 
-  usersStore.push(newUser);
-  const accessToken = createToken({
-    id: newUser.id,
-    email: newUser.email,
-    role: "client",
-    name: newUser.name
-  });
-
-  return res.status(201).json({
-    accessToken,
-    user: {
+    const accessToken = createToken({
       id: newUser.id,
-      name: newUser.name,
       email: newUser.email,
       role: "client",
-      isAdmin: false
-    },
-    message: "User registered successfully"
-  });
+      name: newUser.name
+    });
+
+    return res.status(201).json({
+      accessToken,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: "client",
+        isAdmin: false
+      },
+      message: "User registered successfully"
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: "Server error registering user." });
+  }
 };
 
 app.post(["/register", "/api/register"], handleRegister);
@@ -261,40 +221,14 @@ app.use((req, res, next) => {
 // --------------------------------------------------------------------------
 // Admin Raffle Draw Endpoint (Protected: Admin role required)
 // --------------------------------------------------------------------------
-const handleDraw = (req, res) => {
+const handleDraw = async (req, res) => {
   if (!req.claims || req.claims.role !== "admin") {
     return res.status(403).json({ status: 403, message: "Forbidden: Administrator role required to execute raffle draw." });
   }
 
   try {
-    const pendingTickets = ticketsStore.filter((t) => (t.status || "pending").toLowerCase() === "pending");
-    if (pendingTickets.length === 0) {
-      return res.status(200).json({
-        status: "empty",
-        message: "No pending tickets in the raffle pool to draw.",
-        winner: null,
-        totalPending: 0
-      });
-    }
-
-    const winnerIndex = Math.floor(Math.random() * pendingTickets.length);
-    const winningTicket = pendingTickets[winnerIndex];
-    winningTicket.status = "won";
-
-    const user = usersStore.find((u) => u.id === winningTicket.user_id);
-    const result = {
-      ...winningTicket,
-      status: "won",
-      user_name: user ? user.name : "Client User",
-      user_email: user ? user.email : ""
-    };
-
-    return res.status(200).json({
-      status: "success",
-      message: "Winner successfully drawn!",
-      winner: result,
-      totalRemainingPending: pendingTickets.length - 1
-    });
+    const result = await db.drawRaffleWinner();
+    return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ status: 500, message: "Server error executing raffle draw." });
   }
@@ -305,19 +239,21 @@ app.all(["/admin/draw", "/api/admin/draw"], handleDraw);
 // --------------------------------------------------------------------------
 // Admin Reset Raffle Pool Endpoint (Protected: Admin role required)
 // --------------------------------------------------------------------------
-const handleReset = (req, res) => {
+const handleReset = async (req, res) => {
   if (!req.claims || req.claims.role !== "admin") {
     return res.status(403).json({ status: 403, message: "Forbidden: Administrator role required to reset raffle pool." });
   }
 
-  ticketsStore.forEach((t) => {
-    t.status = "pending";
-  });
-  return res.status(200).json({
-    status: "success",
-    message: "All ticket statuses reset to pending.",
-    totalTickets: ticketsStore.length
-  });
+  try {
+    const totalReset = await db.resetTicketsPool();
+    return res.status(200).json({
+      status: "success",
+      message: "All ticket statuses reset to pending.",
+      totalTickets: totalReset
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: "Server error resetting pool." });
+  }
 };
 
 app.all(["/admin/reset", "/api/admin/reset"], handleReset);
@@ -327,23 +263,28 @@ app.all(["/admin/reset", "/api/admin/reset"], handleReset);
 // --------------------------------------------------------------------------
 
 // GET /api/tickets: Admins see all; clients see ONLY their own tickets
-const handleGetTickets = (req, res) => {
+const handleGetTickets = async (req, res) => {
   const claims = req.claims;
 
-  if (claims && claims.role === "admin") {
-    return res.status(200).json(ticketsStore);
-  }
+  try {
+    if (claims && claims.role === "admin") {
+      const allTickets = await db.getAllTickets();
+      return res.status(200).json(allTickets);
+    }
 
-  const user = usersStore.find((u) => u.email === claims.email || u.id === claims.id);
-  const userId = user ? user.id : claims.id;
-  const userTickets = ticketsStore.filter((t) => t.user_id === userId);
-  return res.status(200).json(userTickets);
+    const user = await db.findUserByEmail(claims.email);
+    const userId = user ? user.id : claims.id;
+    const userTickets = await db.getUserTickets(userId);
+    return res.status(200).json(userTickets);
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: "Failed to fetch tickets." });
+  }
 };
 
 app.get(["/tickets", "/api/tickets"], handleGetTickets);
 
 // POST /api/tickets: Derives user_id from verified JWT claims
-const handlePostTicket = (req, res) => {
+const handlePostTicket = async (req, res) => {
   const claims = req.claims;
   const { project_title, project_description, budget_range, tech_stack, urgency } = req.body;
 
@@ -351,93 +292,96 @@ const handlePostTicket = (req, res) => {
     return res.status(400).json({ status: 400, message: "Project title and description are required" });
   }
 
-  const user = usersStore.find((u) => u.email === claims.email || u.id === claims.id);
-  const nextId = ticketsStore.length > 0 ? Math.max(...ticketsStore.map((t) => t.id)) + 1 : 1;
+  try {
+    const user = await db.findUserByEmail(claims.email);
+    const userId = user ? user.id : (claims.id || 1);
 
-  const newTicket = {
-    id: nextId,
-    user_id: user ? user.id : (claims.id || 1),
-    project_title: String(project_title).trim(),
-    project_description: String(project_description).trim(),
-    budget_range: budget_range || "$5k - $10k",
-    tech_stack: tech_stack ? String(tech_stack).trim() : "",
-    urgency: urgency ? String(urgency).toLowerCase() : "medium",
-    status: "pending",
-    created_at: Date.now()
-  };
+    const newTicket = await db.createTicket({
+      user_id: userId,
+      project_title,
+      project_description,
+      budget_range,
+      tech_stack,
+      urgency
+    });
 
-  ticketsStore.push(newTicket);
-  return res.status(201).json(newTicket);
+    return res.status(201).json(newTicket);
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: "Failed to submit ticket." });
+  }
 };
 
 app.post(["/tickets", "/api/tickets"], handlePostTicket);
 
 // PUT /api/tickets/:id: Edit consultation ticket (Client pending only, or Admin)
-const handlePutTicket = (req, res) => {
+const handlePutTicket = async (req, res) => {
   const claims = req.claims;
   const ticketId = Number(req.params.id) || req.params.id;
-  const ticketIndex = ticketsStore.findIndex((t) => t.id === ticketId || String(t.id) === String(ticketId));
 
-  if (ticketIndex === -1) {
-    return res.status(404).json({ status: 404, message: "Ticket not found" });
-  }
-
-  const ticket = ticketsStore[ticketIndex];
-  const isAdmin = claims && claims.role === "admin";
-  const user = usersStore.find((u) => u.email === claims.email || u.id === claims.id);
-  const userId = user ? user.id : claims.id;
-
-  if (!isAdmin) {
-    if (ticket.user_id !== userId) {
-      return res.status(403).json({ status: 403, message: "Forbidden: You cannot modify tickets belonging to other clients" });
+  try {
+    const ticket = await db.getTicketById(ticketId);
+    if (!ticket) {
+      return res.status(404).json({ status: 404, message: "Ticket not found" });
     }
-    if ((ticket.status || "pending").toLowerCase() !== "pending") {
-      return res.status(400).json({ status: 400, message: "Cannot edit tickets that are already closed or awarded" });
+
+    const isAdmin = claims && claims.role === "admin";
+    const user = await db.findUserByEmail(claims.email);
+    const userId = user ? user.id : claims.id;
+
+    if (!isAdmin) {
+      if (ticket.user_id !== userId) {
+        return res.status(403).json({ status: 403, message: "Forbidden: You cannot modify tickets belonging to other clients" });
+      }
+      if ((ticket.status || "pending").toLowerCase() !== "pending") {
+        return res.status(400).json({ status: 400, message: "Cannot edit tickets that are already closed or awarded" });
+      }
     }
+
+    const { project_title, project_description, budget_range, tech_stack, urgency, status } = req.body;
+    const updates = {};
+    if (project_title !== undefined) updates.project_title = project_title;
+    if (project_description !== undefined) updates.project_description = project_description;
+    if (budget_range !== undefined) updates.budget_range = budget_range;
+    if (tech_stack !== undefined) updates.tech_stack = tech_stack;
+    if (urgency !== undefined) updates.urgency = urgency;
+    if (isAdmin && status !== undefined) updates.status = status;
+
+    const updatedTicket = await db.updateTicket(ticketId, updates);
+    return res.status(200).json(updatedTicket);
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: "Failed to update ticket." });
   }
-
-  const { project_title, project_description, budget_range, tech_stack, urgency, status } = req.body;
-  if (project_title !== undefined) ticket.project_title = String(project_title).trim();
-  if (project_description !== undefined) ticket.project_description = String(project_description).trim();
-  if (budget_range !== undefined) ticket.budget_range = budget_range;
-  if (tech_stack !== undefined) ticket.tech_stack = String(tech_stack).trim();
-  if (urgency !== undefined) ticket.urgency = String(urgency).toLowerCase();
-
-  if (isAdmin && status !== undefined) {
-    ticket.status = String(status).toLowerCase();
-  }
-
-  ticket.updated_at = Date.now();
-  ticketsStore[ticketIndex] = ticket;
-  return res.status(200).json(ticket);
 };
 
 // DELETE /api/tickets/:id: Delete consultation ticket (Client pending only, or Admin)
-const handleDeleteTicket = (req, res) => {
+const handleDeleteTicket = async (req, res) => {
   const claims = req.claims;
   const ticketId = Number(req.params.id) || req.params.id;
-  const ticketIndex = ticketsStore.findIndex((t) => t.id === ticketId || String(t.id) === String(ticketId));
 
-  if (ticketIndex === -1) {
-    return res.status(404).json({ status: 404, message: "Ticket not found" });
-  }
-
-  const ticket = ticketsStore[ticketIndex];
-  const isAdmin = claims && claims.role === "admin";
-  const user = usersStore.find((u) => u.email === claims.email || u.id === claims.id);
-  const userId = user ? user.id : claims.id;
-
-  if (!isAdmin) {
-    if (ticket.user_id !== userId) {
-      return res.status(403).json({ status: 403, message: "Forbidden: You cannot delete tickets belonging to other clients" });
+  try {
+    const ticket = await db.getTicketById(ticketId);
+    if (!ticket) {
+      return res.status(404).json({ status: 404, message: "Ticket not found" });
     }
-    if ((ticket.status || "pending").toLowerCase() !== "pending") {
-      return res.status(400).json({ status: 400, message: "Cannot delete tickets that are already closed or awarded" });
-    }
-  }
 
-  ticketsStore.splice(ticketIndex, 1);
-  return res.status(200).json({ status: "success", message: "Ticket successfully deleted", id: ticketId });
+    const isAdmin = claims && claims.role === "admin";
+    const user = await db.findUserByEmail(claims.email);
+    const userId = user ? user.id : claims.id;
+
+    if (!isAdmin) {
+      if (ticket.user_id !== userId) {
+        return res.status(403).json({ status: 403, message: "Forbidden: You cannot delete tickets belonging to other clients" });
+      }
+      if ((ticket.status || "pending").toLowerCase() !== "pending") {
+        return res.status(400).json({ status: 400, message: "Cannot delete tickets that are already closed or awarded" });
+      }
+    }
+
+    await db.deleteTicket(ticketId);
+    return res.status(200).json({ status: "success", message: "Ticket successfully deleted", id: ticketId });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: "Failed to delete ticket." });
+  }
 };
 
 app.put(["/tickets/:id", "/api/tickets/:id"], handlePutTicket);
