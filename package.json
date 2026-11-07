@@ -1,0 +1,22 @@
+{
+  "name": "promo-tickets-v2",
+  "version": "2.0.0",
+  "description": "DevConsult Promo Tickets v2 - Lottery-Style Consultation Ticketing Web Application",
+  "scripts": {
+    "test": "node --test tests/**/*.test.cjs",
+    "dev:backend": "cd wdd330-backend && npm run dev",
+    "dev:frontend": "cd wdd330-frontend && npm run dev",
+    "build": "cd wdd330-frontend && npm run build"
+  },
+  "keywords": [
+    "consultation",
+    "lottery",
+    "tickets",
+    "wdd330",
+    "full-stack",
+    "vite",
+    "express"
+  ],
+  "author": "Milton Chino",
+  "license": "MIT"
+}

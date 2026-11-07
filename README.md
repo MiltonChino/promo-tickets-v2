@@ -219,6 +219,17 @@ npm run dev
 
 ---
 
+### Step 5: Run the Automated Test Suite
+
+Run the full 44-test end-to-end integration and security test suite across both the standalone Express backend and the Netlify Serverless runtime:
+
+```bash
+npm test
+```
+*Executes built-in `node:test` runner against ephemeral ports, verifying auth, IDOR isolation, lifecycle CRUD, admin raffle operations, and the ROI calculator in < 1 second.*
+
+---
+
 ## 🔑 Default Test Credentials
 
 For quick evaluation, use the following pre-configured credentials:

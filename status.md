@@ -82,20 +82,40 @@ A direct comparison between the initial project blueprint ([plan.md](file:///hom
 
 ---
 
-## 4. Security Verification Test Suite
+## 4. Security & Integration Verification Test Suite
 
-All security requirements were executed and verified via automated integration tests:
+All security, authorization, lifecycle, and calculation requirements are verified via an automated 44-test integration test suite (`tests/api-integration.test.cjs`) executing over ephemeral ports against both backends (`wdd330-backend/server.js` and `wdd330-frontend/netlify/functions/api.cjs`):
 
-| Test Case | Method & Endpoint | Credentials / Token | Expected Outcome | Verified Result |
+```bash
+npm test
+```
+
+| Test Case Category | Endpoint & Method | Credentials / Payload | Expected Outcome | Verified Result |
 | :--- | :--- | :--- | :--- | :--- |
-| **Admin Login** | `POST /api/login` | Valid Admin Credentials | 200, JWT token, `role: "admin"` | ✅ **PASSED** |
-| **Client Login** | `POST /api/login` | Valid Client Credentials | 200, JWT token, `role: "client"` | ✅ **PASSED** |
-| **Invalid Password** | `POST /api/login` | Wrong Password | 401 Unauthorized | ✅ **PASSED** |
-| **Unauthenticated Draw** | `POST /api/admin/draw` | No Token | 401 Unauthorized | ✅ **PASSED** |
-| **Client Access to Draw** | `POST /api/admin/draw` | Client Bearer Token | 403 Forbidden | ✅ **PASSED** |
-| **Admin Access to Draw** | `POST /api/admin/draw` | Admin Bearer Token | 200 Success | ✅ **PASSED** |
-| **IDOR Ticket Isolation** | `GET /api/tickets` | Client Bearer Token | Returns only client's tickets | ✅ **PASSED** |
-| **Admin Ticket Pool** | `GET /api/tickets` | Admin Bearer Token | Returns all tickets across all users | ✅ **PASSED** |
+| **Admin Login** | `POST /api/login` | Valid Admin Credentials | 200, JWT token, `role: "admin"`, `isAdmin: true` | ✅ **PASSED (Both Backends)** |
+| **Admin Username Alias** | `POST /api/login` | `username: "admin"` | 200, JWT token, `role: "admin"` | ✅ **PASSED (Both Backends)** |
+| **Client Login** | `POST /api/login` | Valid Client Credentials | 200, JWT token, `role: "client"`, `isAdmin: false` | ✅ **PASSED (Both Backends)** |
+| **Invalid Password** | `POST /api/login` | Wrong Password | 401 Unauthorized | ✅ **PASSED (Both Backends)** |
+| **Missing Credentials** | `POST /api/login` | Empty body `{}` | 400 Bad Request | ✅ **PASSED (Both Backends)** |
+| **New Client Registration** | `POST /api/register` | New unique email & password | 201 Created, isolated account JWT | ✅ **PASSED (Both Backends)** |
+| **Unauthenticated Tickets** | `GET /api/tickets` | No Token | 401 Unauthorized | ✅ **PASSED (Both Backends)** |
+| **Unauthenticated Draw** | `POST /api/admin/draw` | No Token | 401 Unauthorized | ✅ **PASSED (Both Backends)** |
+| **Unauthenticated Reset** | `POST /api/admin/reset` | No Token | 401 Unauthorized | ✅ **PASSED (Both Backends)** |
+| **Client Access to Draw** | `POST /api/admin/draw` | Client Bearer Token | 403 Forbidden | ✅ **PASSED (Both Backends)** |
+| **Client Access to Reset** | `POST /api/admin/reset` | Client Bearer Token | 403 Forbidden | ✅ **PASSED (Both Backends)** |
+| **Ticket Submission** | `POST /api/tickets` | Client Token + tech stack & urgency | 201 Created, `status: "pending"` | ✅ **PASSED (Both Backends)** |
+| **IDOR Isolation** | `GET /api/tickets` | Different Client Token | Cannot view other client's tickets | ✅ **PASSED (Both Backends)** |
+| **Admin Global Visibility** | `GET /api/tickets` | Admin Bearer Token | Receives all tickets across all clients | ✅ **PASSED (Both Backends)** |
+| **Client Ticket Edit** | `PUT /api/tickets/:id` | Client Token (own pending ticket) | 200 Success, fields updated | ✅ **PASSED (Both Backends)** |
+| **IDOR Edit Tamper Guard** | `PUT /api/tickets/:id` | Client Token (other's ticket) | 403 Forbidden | ✅ **PASSED (Both Backends)** |
+| **IDOR Delete Tamper Guard**| `DELETE /api/tickets/:id`| Client Token (other's ticket) | 403 Forbidden | ✅ **PASSED (Both Backends)** |
+| **Admin Draw Execution** | `POST /api/admin/draw` | Admin Bearer Token | 200 Success, winner flagged as `won` | ✅ **PASSED (Both Backends)** |
+| **Admin Pool Reset** | `POST /api/admin/reset`| Admin Bearer Token | 200 Success, tickets reset to `pending`| ✅ **PASSED (Both Backends)** |
+| **ROI Modeler Calculation** | `POST /api/roi` | Company team size & labor metrics | 200 Success, returns labor savings & ROI | ✅ **PASSED (Both Backends)** |
+| **ROI Modeler Edge Inputs** | `POST /api/roi` | Empty or default parameters | 200 Success, defaults safely without NaN | ✅ **PASSED (Both Backends)** |
+| **Client Ticket Delete** | `DELETE /api/tickets/:id`| Client Token (own pending ticket) | 200 Success, ticket removed | ✅ **PASSED (Both Backends)** |
+
+*Summary: 44 automated tests passing across 2 test suites in under 800ms with zero test failures.*
 
 ---
 
@@ -137,4 +157,6 @@ ADMIN_NAME=Administrator
 - [x] **Ticket Lifecycle Management:** Added full client edit and delete for pending tickets, admin status toggling (`closed`, `pending`, `won`), and three-column admin dashboard with dedicated closed ticket pool.
 - [x] **External Database Adapter for Netlify Serverless (Reversible):** Added `dbAdapter.cjs` supporting PostgreSQL (`pg`) with automatic table creation/seeding, and transparent fallback to local memory store when `DATABASE_URL` is omitted.
 - [x] **Software ROI & Impact Calculator Page:** Added dedicated interactive `#calculator` view with scenario presets (Startup, Mid-Market, E-Commerce), real-time financial modeling (labor savings, revenue boost, payback period, 3-year value), and direct prefill transfer into consultation ticket submissions.
+- [x] **Automated Integration & Parity Test Suite:** Created a comprehensive, zero-dependency 44-test automated test suite (`tests/api-integration.test.cjs`) covering authentication, IDOR isolation, lifecycle CRUD, admin raffle operations, and ROI calculations across both Express and Netlify Serverless runtimes.
+- [x] **Monorepo Developer Experience & Root Package Scripts:** Added root `package.json` providing unified commands: `npm test`, `npm run dev:frontend`, `npm run dev:backend`, and `npm run build`.
 - [ ] **Tailwind Migration (Optional):** If required by course syllabus, replace custom Vanilla CSS with Tailwind CSS.
